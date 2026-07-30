@@ -1,0 +1,48 @@
+@import "tailwindcss";
+
+:root {
+  --recall-navy: #001535;
+  --recall-ink: #0a1628;
+  --recall-blue: #2b62ff;
+  --recall-blue-bright: #297fff;
+  --recall-blue-deep: #0d6efd;
+  --recall-sky: #38bdf8;
+  --recall-violet: #a855f7;
+  --recall-green: #5fc67b;
+  --recall-surface: #f1f4f9;
+  --recall-surface-elevated: #ffffff;
+  --recall-border: #d8e0ec;
+  --recall-muted: #5b6b85;
+  --recall-foreground: #0f1c2e;
+
+  --background: var(--recall-surface);
+  --foreground: var(--recall-foreground);
+}
+
+@theme inline {
+  --color-recall-navy: var(--recall-navy);
+  --color-recall-ink: var(--recall-ink);
+  --color-recall-blue: var(--recall-blue);
+  --color-recall-blue-bright: var(--recall-blue-bright);
+  --color-recall-sky: var(--recall-sky);
+  --color-recall-violet: var(--recall-violet);
+  --color-recall-green: var(--recall-green);
+  --color-recall-surface: var(--recall-surface);
+  --color-recall-elevated: var(--recall-surface-elevated);
+  --color-recall-border: var(--recall-border);
+  --color-recall-muted: var(--recall-muted);
+  --color-recall-foreground: var(--recall-foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--recall-blue) 28%, white);
+  color: var(--recall-navy);
+}
