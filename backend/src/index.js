@@ -1,19 +1,19 @@
-import "dotenv/config";
 import cors from "cors";
 import express from "express";
+import { config, endpoints } from "./config.js";
+import routes from "./routes/index.js";
 
 const app = express();
-const PORT = process.env.PORT || 3001;
 
-app.use(cors({ origin: process.env.CORS_ORIGIN || "http://localhost:3000" }));
+app.use(cors({ origin: config.corsOrigin }));
 app.use(express.json());
+app.use(routes);
 
-app.get("/health", (_req, res) => {
-  res.json({ ok: true, service: "backend" });
-});
-
-// Add API routes here (e.g. Recall bots, webhooks)
-
-app.listen(PORT, () => {
-  console.log(`Backend listening on http://localhost:${PORT}`);
+app.listen(config.port, () => {
+  console.log(`Backend listening on http://localhost:${config.port}`);
+  console.log(`Public base URL: ${config.baseUrl}`);
+  console.log(`Recall webhook URL: ${endpoints.webhooks.recall}`);
+  if (config.recall.region) {
+    console.log(`Recall region: ${config.recall.region}`);
+  }
 });
