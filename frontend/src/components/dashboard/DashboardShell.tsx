@@ -22,13 +22,13 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           <div className="border-b border-white/10 px-5 py-5">
             <Link href="/" className="flex items-center gap-2.5">
               <span className="flex h-8 w-8 items-center justify-center rounded-md bg-recall-blue text-sm font-bold tracking-tight shadow-[0_0_24px_rgba(43,98,255,0.45)]">
-                R
+                S
               </span>
               <div>
                 <p className="text-sm font-semibold tracking-tight">
-                  AI Meeting Workspace
+                  Shop Talk
                 </p>
-                <p className="text-[11px] text-white/45">Powered by Recall.ai</p>
+                <p className="text-[11px] text-white/45">Conversations, organized</p>
               </div>
             </Link>
           </div>
@@ -42,11 +42,11 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                   : "text-white/65 hover:bg-white/5 hover:text-white"
               }`}
             >
-              All workspaces
+              All Meetings
             </Link>
 
             <p className="mt-4 px-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/35">
-              Recent
+              Recent Meetings
             </p>
             {ready ? (
               workspaces.length === 0 ? (
@@ -97,11 +97,11 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           {!inWorkspace ? (
             <header className="flex h-14 items-center justify-between border-b border-recall-border/80 bg-white/70 px-6 backdrop-blur-md">
               <p className="text-sm text-recall-muted">
-                Paste a meeting URL → Recall joins → workspace opens after the call
+                Paste a meeting URL → capture the conversation → open it in Shop Talk
               </p>
               <span className="inline-flex items-center gap-1.5 rounded-full bg-recall-blue/10 px-2.5 py-1 text-[11px] font-medium text-recall-blue">
                 <span className="h-1.5 w-1.5 rounded-full bg-recall-green" />
-                Demo UI
+                Shop Talk
               </span>
             </header>
           ) : null}

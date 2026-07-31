@@ -1,13 +1,15 @@
-# AI Meeting Workspace
+# Shop Talk
+
+Meeting conversations, captured and turned into a workspace.
 
 | Path | Role |
 |------|------|
-| [`frontend/`](frontend/) | Next.js — AI Meeting Workspace UI (Vercel) |
-| [`backend/`](backend/) | Node.js API skeleton (DigitalOcean) |
+| [`frontend/`](frontend/) | Next.js — Shop Talk UI (Vercel) |
+| [`backend/`](backend/) | Node.js API (DigitalOcean) — Recall + app logic |
 
 ## Product
 
-Paste a meeting URL → Recall bot joins → after the call, open a **Meeting Workspace** with tabs:
+Paste a meeting URL → capture the call → open a **Shop Talk** meeting with tabs:
 
 Summary · Transcript · Insights · Action Items · Questions · Developer View · Settings
 
@@ -20,5 +22,3 @@ cd backend && npm install && cp .env.example .env && npm run dev
 
 - Web: http://localhost:3000  
 - API health: http://localhost:3001/health  
-
-A demo workspace (**Product Kickoff**) is seeded in the UI so you can explore every tab before the API is wired.

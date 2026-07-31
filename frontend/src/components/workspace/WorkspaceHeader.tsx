@@ -26,7 +26,7 @@ export function WorkspaceHeader({ workspace }: { workspace: MeetingWorkspace }) 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-recall-muted">
-              Meeting Workspace
+              Shop Talk
             </p>
             <h1 className="mt-1 text-2xl font-semibold tracking-tight text-recall-navy">
               {workspace.title}

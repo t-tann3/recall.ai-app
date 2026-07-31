@@ -11,8 +11,8 @@ export default function DeveloperTab() {
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       <p className="text-sm text-recall-muted">
-        Raw Recall artifacts and webhook timeline — this tab is what makes the demo
-        developer-facing instead of another summarizer.
+        Raw capture events for this meeting — useful for debugging how Shop Talk
+        ingested the conversation.
       </p>
 
       <div className="grid gap-3 sm:grid-cols-3">

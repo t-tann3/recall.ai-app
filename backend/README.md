@@ -35,8 +35,16 @@ All mutating/read routes under `/api/*` return `501 not_implemented` until you f
 | GET | `/api/workspaces/:id/action-items` | tab |
 | GET | `/api/workspaces/:id/questions` | tab |
 | GET | `/api/workspaces/:id/developer` | tab |
-| POST | `/api/webhooks/recall` | dashboard webhook |
+| POST | `/api/webhooks/recall` | Svix-verified (see below) |
 
-Register this URL in the Recall webhook dashboard:
+## Webhooks (local)
 
-`{PUBLIC_API_BASE_URL}/api/webhooks/recall`
+Per [Testing Webhooks Locally](https://docs.recall.ai/docs/testing-webhooks-locally):
+
+1. Keep ngrok + backend running
+2. In Recall dashboard → Add Endpoint:
+   `https://blazer-bulgur-booting.ngrok-free.dev/api/webhooks/recall`
+3. Copy the endpoint **signing secret** into `.env` as `RECALL_SVIX_WEBHOOK_SECRET`
+4. Until then, the docs sample secret is used as a fallback (real deliveries will fail verification until you set yours)
+
+Handler: `src/routes/webhooks.js` — verifies with `svix`, logs the event, returns `{}`.

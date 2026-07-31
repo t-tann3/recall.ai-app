@@ -29,7 +29,7 @@ export function SendBotForm() {
         Meeting URL
       </label>
       <p className="mt-1 text-xs text-recall-muted">
-        Recall joins the call. When it ends, a Meeting Workspace is created automatically.
+        Recall joins the call. When it ends, a Shop Talk meeting is created automatically.
       </p>
       <div className="mt-4 flex flex-col gap-3 sm:flex-row">
         <input
@@ -47,7 +47,7 @@ export function SendBotForm() {
           type="submit"
           className="shrink-0 bg-recall-blue px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-recall-blue-bright"
         >
-          Create workspace
+          Create meeting
         </button>
       </div>
       {error ? (

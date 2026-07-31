@@ -56,6 +56,15 @@ const RECALL_API_KEY = process.env.RECALL_API_KEY?.trim() || null;
 const RECALL_WORKSPACE_VERIFICATION_SECRET =
   process.env.RECALL_WORKSPACE_VERIFICATION_SECRET?.trim() || null;
 
+/**
+ * Dashboard endpoint signing secret (Svix).
+ * Sample from Recall docs until you paste the real secret from the webhook UI.
+ * @see https://docs.recall.ai/docs/testing-webhooks-locally
+ */
+const RECALL_SVIX_WEBHOOK_SECRET =
+  process.env.RECALL_SVIX_WEBHOOK_SECRET?.trim() ||
+  "whsec_yhVJ7lfTGMQDJY8YSq9aGcsw4I7/XJIz";
+
 /** Recall API host for the selected region. */
 export const RECALL_API_BASE = RECALL_REGION
   ? `https://${RECALL_REGION}.recall.ai/api/v1`
@@ -82,6 +91,7 @@ export const config = {
     region: RECALL_REGION,
     apiKey: RECALL_API_KEY,
     workspaceVerificationSecret: RECALL_WORKSPACE_VERIFICATION_SECRET,
+    webhookSecret: RECALL_SVIX_WEBHOOK_SECRET,
     apiBase: RECALL_API_BASE,
   },
 };

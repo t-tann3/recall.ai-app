@@ -54,7 +54,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       const id = `ws_${Date.now().toString(36)}`;
       const workspace: MeetingWorkspace = {
         id,
-        title: "New Meeting Workspace",
+        title: "New Meeting",
         meetingUrl: meetingUrl.trim(),
         botName: "Workspace Bot",
         status: "joining",

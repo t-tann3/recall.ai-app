@@ -11,12 +11,11 @@ export default function HomePage() {
     <div className="p-6 md:p-8">
       <div className="mb-8">
         <h1 className="text-2xl font-semibold tracking-tight text-recall-navy md:text-3xl">
-          AI Meeting Workspace
+          Shop Talk
         </h1>
         <p className="mt-2 max-w-2xl text-sm leading-relaxed text-recall-muted">
-          A developer-facing layer on Recall.ai — paste a meeting URL, let a bot join,
-          then open a Notion-style workspace with summary, transcript, insights, and
-          raw API events.
+          Turn meeting conversations into a workspace — paste a meeting URL, capture
+          the call, then open summary, transcript, insights, and follow-ups.
         </p>
       </div>
 
@@ -29,7 +28,7 @@ export default function HomePage() {
 
       <section className="mt-10">
         <h2 className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-recall-muted">
-          Workspaces
+          Meetings
         </h2>
         {ready ? <WorkspaceList workspaces={workspaces} /> : (
           <p className="text-sm text-recall-muted">Loading workspaces…</p>

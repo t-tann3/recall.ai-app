@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AI Meeting Workspace",
-  description: "Developer-facing meeting workspace powered by Recall.ai",
+  title: "Shop Talk",
+  description: "Meeting conversations, captured and turned into a workspace",
 };
 
 export default function RootLayout({

@@ -35,7 +35,7 @@ export const DEMO_WORKSPACE: MeetingWorkspace = {
   platform: "Google Meet",
   createdAt: new Date().toISOString(),
   summary:
-    "The team aligned on shipping an AI Meeting Workspace that showcases the Recall.ai API. Scope covers bot join, webhook-driven artifacts, and a tabbed post-meeting workspace (summary, transcript, insights, actions, questions, and a developer view).",
+    "The team aligned on shipping Shop Talk — a product for meeting conversations. Scope covers capturing the call, then a tabbed workspace with summary, transcript, insights, actions, and questions.",
   transcript: [
     {
       speaker: "Alex",
@@ -54,7 +54,7 @@ export const DEMO_WORKSPACE: MeetingWorkspace = {
     },
   ],
   insights: [
-    "Decision: ship a developer-facing Meeting Workspace, not a generic summarizer.",
+    "Decision: ship Shop Talk as a conversations product, not a generic summarizer.",
     "Risk: ad-hoc bot joins may hit 507 — schedule with join_at in production.",
     "Opportunity: Developer View differentiates this from Notion/Gong clones.",
   ],
