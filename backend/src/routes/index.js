@@ -1,19 +1,10 @@
-import { Router } from "express";
-import healthRouter from "./health.js";
-import botsRouter from "./bots.js";
-import workspacesRouter from "./workspaces.js";
-import webhooksRouter from "./webhooks.js";
-
-/**
- * Route modules (webhooks are mounted separately in index.js
- * so they receive a raw body for Svix verification).
- */
-const router = Router();
-
-router.use("/health", healthRouter);
-router.use("/api/bots", botsRouter);
-router.use("/api/workspaces", workspacesRouter);
-router.use("/api/webhooks", webhooksRouter);
-
-export default router;
-export { healthRouter, botsRouter, workspacesRouter, webhooksRouter };
+export { default as healthRouter } from "./health.js";
+export { default as botsRouter } from "./bots.js";
+export { default as workspacesRouter } from "./workspaces.js";
+export { default as webhooksRouter } from "./webhooks.js";
+export { default as hiringManagersRouter } from "./hiringManagers.js";
+export { default as candidatesRouter } from "./candidates.js";
+export { default as jobPostingsRouter } from "./jobPostings.js";
+export { default as applicationsRouter } from "./applications.js";
+export { default as interviewsRouter } from "./interviews.js";
+export { default as calendarEventsRouter } from "./calendarEvents.js";

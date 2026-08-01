@@ -4,9 +4,27 @@
  */
 export const endpoints = {
   health: "/health",
+  auth: {
+    signup: "/api/auth/signup",
+    login: "/api/auth/login",
+    me: "/api/auth/me",
+  },
   bots: {
     create: "/api/bots",
     byId: (id: string) => `/api/bots/${id}`,
+  },
+  jobPostings: {
+    list: "/api/job-postings",
+    create: "/api/job-postings",
+    byId: (id: string) => `/api/job-postings/${id}`,
+  },
+  candidates: {
+    list: "/api/candidates",
+    byId: (id: string) => `/api/candidates/${id}`,
+  },
+  interviews: {
+    list: "/api/interviews",
+    byId: (id: string) => `/api/interviews/${id}`,
   },
   workspaces: {
     list: "/api/workspaces",

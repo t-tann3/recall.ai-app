@@ -4,3 +4,5 @@ export * from "./types";
 export * from "./health";
 export * from "./bots";
 export * from "./workspaces";
+export * from "./auth";
+export * from "./hr";

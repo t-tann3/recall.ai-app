@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useAuth } from "@/lib/AuthProvider";
 import { useWorkspaces } from "@/lib/useWorkspaces";
 import { statusLabel } from "@/lib/workspaces";
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { workspaces, ready } = useWorkspaces();
+  const { hiringManager, logout } = useAuth();
   const inWorkspace = pathname.startsWith("/workspaces/");
 
   return (
@@ -25,9 +27,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                 S
               </span>
               <div>
-                <p className="text-sm font-semibold tracking-tight">
-                  Shop Talk
-                </p>
+                <p className="text-sm font-semibold tracking-tight">Shop Talk</p>
                 <p className="text-[11px] text-white/45">Conversations, organized</p>
               </div>
             </Link>
@@ -42,11 +42,11 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                   : "text-white/65 hover:bg-white/5 hover:text-white"
               }`}
             >
-              All Meetings
+              Home
             </Link>
 
             <p className="mt-4 px-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/35">
-              Recent Meetings
+              Captures
             </p>
             {ready ? (
               workspaces.length === 0 ? (
@@ -90,6 +90,23 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             >
               Settings
             </Link>
+            {hiringManager ? (
+              <div className="mt-2 rounded-md px-3 py-2">
+                <p className="truncate text-xs font-medium text-white/80">
+                  {hiringManager.name}
+                </p>
+                <p className="truncate text-[11px] text-white/40">
+                  {hiringManager.email}
+                </p>
+                <button
+                  type="button"
+                  onClick={logout}
+                  className="mt-2 text-[11px] font-medium text-recall-sky hover:text-white"
+                >
+                  Sign out
+                </button>
+              </div>
+            ) : null}
           </div>
         </aside>
 
@@ -97,7 +114,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           {!inWorkspace ? (
             <header className="flex h-14 items-center justify-between border-b border-recall-border/80 bg-white/70 px-6 backdrop-blur-md">
               <p className="text-sm text-recall-muted">
-                Paste a meeting URL → capture the conversation → open it in Shop Talk
+                Your hiring command center — roles, interviews, and outcomes
               </p>
               <span className="inline-flex items-center gap-1.5 rounded-full bg-recall-blue/10 px-2.5 py-1 text-[11px] font-medium text-recall-blue">
                 <span className="h-1.5 w-1.5 rounded-full bg-recall-green" />

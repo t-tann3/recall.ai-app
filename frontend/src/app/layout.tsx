@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { DashboardShell } from "@/components/dashboard/DashboardShell";
-import { WorkspacesProvider } from "@/lib/WorkspacesProvider";
+import { AuthProvider } from "@/lib/AuthProvider";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -16,7 +15,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Shop Talk",
-  description: "Meeting conversations, captured and turned into a workspace",
+  description: "Interview conversations for hiring teams",
 };
 
 export default function RootLayout({
@@ -27,9 +26,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <WorkspacesProvider>
-          <DashboardShell>{children}</DashboardShell>
-        </WorkspacesProvider>
+        <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
   );

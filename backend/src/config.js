@@ -32,8 +32,38 @@ export function url(path = "/") {
 /** App routes — use these instead of repeating BASE_URL. */
 export const endpoints = {
   health: url("/health"),
+  auth: {
+    signup: url("/api/auth/signup"),
+    login: url("/api/auth/login"),
+    me: url("/api/auth/me"),
+  },
   webhooks: {
     recall: url("/api/webhooks/recall"),
+  },
+  hiringManagers: {
+    list: url("/api/hiring-managers"),
+    byId: (id) => url(`/api/hiring-managers/${id}`),
+  },
+  candidates: {
+    list: url("/api/candidates"),
+    byId: (id) => url(`/api/candidates/${id}`),
+  },
+  jobPostings: {
+    list: url("/api/job-postings"),
+    byId: (id) => url(`/api/job-postings/${id}`),
+  },
+  applications: {
+    list: url("/api/applications"),
+    byId: (id) => url(`/api/applications/${id}`),
+  },
+  interviews: {
+    list: url("/api/interviews"),
+    byId: (id) => url(`/api/interviews/${id}`),
+    panelists: (id) => url(`/api/interviews/${id}/panelists`),
+  },
+  calendarEvents: {
+    list: url("/api/calendar-events"),
+    byId: (id) => url(`/api/calendar-events/${id}`),
   },
   workspaces: {
     list: url("/api/workspaces"),
@@ -87,6 +117,10 @@ export const config = {
   corsOrigin: CORS_ORIGIN,
   baseUrl: BASE_URL,
   endpoints,
+  auth: {
+    jwtSecret:
+      process.env.JWT_SECRET?.trim() || "shoptalk-dev-secret-change-me",
+  },
   recall: {
     region: RECALL_REGION,
     apiKey: RECALL_API_KEY,
