@@ -13,13 +13,17 @@ import jobPostingsRouter from "./routes/jobPostings.js";
 import applicationsRouter from "./routes/applications.js";
 import interviewsRouter from "./routes/interviews.js";
 import calendarEventsRouter from "./routes/calendarEvents.js";
+import calendarRouter from "./routes/calendar.js";
+import scorecardCriteriaRouter from "./routes/scorecardCriteria.js";
 import { requireAuth } from "./middleware/requireAuth.js";
+import { requestLogger } from "./middleware/requestLogger.js";
 
 seedDemoData();
 
 const app = express();
 
 app.use(cors({ origin: config.corsOrigin }));
+app.use(requestLogger);
 
 // Webhooks need the raw body for Svix verification — mount before express.json()
 app.use("/api/webhooks", webhooksRouter);
@@ -35,6 +39,8 @@ app.use("/api/job-postings", requireAuth, jobPostingsRouter);
 app.use("/api/applications", requireAuth, applicationsRouter);
 app.use("/api/interviews", requireAuth, interviewsRouter);
 app.use("/api/calendar-events", requireAuth, calendarEventsRouter);
+app.use("/api/calendar", calendarRouter);
+app.use("/api/scorecard-criteria", scorecardCriteriaRouter);
 
 app.listen(config.port, () => {
   console.log(`Backend listening on http://localhost:${config.port}`);

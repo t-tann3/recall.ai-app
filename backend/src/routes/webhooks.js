@@ -2,6 +2,7 @@ import { Router } from "express";
 import bodyParser from "body-parser";
 import { Webhook } from "svix";
 import { config } from "../config.js";
+import { processRecallWebhook } from "../services/recallWebhooks.js";
 
 const router = Router();
 
@@ -10,15 +11,14 @@ const router = Router();
  * @see https://docs.recall.ai/docs/testing-webhooks-locally
  *
  * Dashboard URL: {PUBLIC_API_BASE_URL}/api/webhooks/recall
- * Subscribe to: recording.done, transcript.done, transcript.failed
- * (and bot.* / recording.failed when ready)
+ * Subscribe to: bot.*, recording.done, recording.failed, transcript.done, transcript.failed
  *
  * Must use raw body for Svix signature verification.
  */
 router.post(
   "/recall",
   bodyParser.raw({ type: "application/json" }),
-  (req, res) => {
+  async (req, res) => {
     const secret = config.recall.webhookSecret;
     const payload = req.body;
     const headers = req.headers;
@@ -32,8 +32,14 @@ router.post(
       return res.status(400).json({});
     }
 
-    // Placeholder — process events async later (recording.done, transcript.*, bot.*)
-    console.log("[webhooks/recall] verified event:", msg?.event ?? msg);
+    // Acknowledge quickly; process after verify.
+    try {
+      const result = await processRecallWebhook(msg);
+      console.log("[webhooks/recall] handled:", result);
+    } catch (err) {
+      console.error("[webhooks/recall] handler error:", err.message);
+      // Still 200 so Svix doesn't retry forever on app bugs during local dev.
+    }
 
     return res.json({});
   },

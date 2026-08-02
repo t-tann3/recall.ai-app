@@ -65,6 +65,12 @@ export const endpoints = {
     list: url("/api/calendar-events"),
     byId: (id) => url(`/api/calendar-events/${id}`),
   },
+  calendar: {
+    connections: url("/api/calendar/connections"),
+    oauthStart: url("/api/calendar/oauth/start"),
+    oauthCallback: url("/api/calendar/oauth/callback"),
+    status: url("/api/calendar/status"),
+  },
   workspaces: {
     list: url("/api/workspaces"),
     byId: (id) => url(`/api/workspaces/${id}`),
@@ -74,6 +80,9 @@ export const endpoints = {
     actionItems: (id) => url(`/api/workspaces/${id}/action-items`),
     questions: (id) => url(`/api/workspaces/${id}/questions`),
     developer: (id) => url(`/api/workspaces/${id}/developer`),
+  },
+  scorecardCriteria: {
+    me: url("/api/scorecard-criteria"),
   },
   bots: {
     create: url("/api/bots"),
@@ -95,9 +104,14 @@ const RECALL_SVIX_WEBHOOK_SECRET =
   process.env.RECALL_SVIX_WEBHOOK_SECRET?.trim() ||
   "whsec_yhVJ7lfTGMQDJY8YSq9aGcsw4I7/XJIz";
 
-/** Recall API host for the selected region. */
+/** Recall API host for the selected region (v1 bots/webhooks). */
 export const RECALL_API_BASE = RECALL_REGION
   ? `https://${RECALL_REGION}.recall.ai/api/v1`
+  : null;
+
+/** Recall Calendar V2 API host. */
+export const RECALL_API_V2_BASE = RECALL_REGION
+  ? `https://${RECALL_REGION}.recall.ai/api/v2`
   : null;
 
 /**
@@ -111,6 +125,31 @@ export function recallUrl(path = "/") {
   const normalized = path.startsWith("/") ? path : `/${path}`;
   return `${RECALL_API_BASE}${normalized}`;
 }
+
+/**
+ * Build a Recall Calendar V2 URL.
+ * @example recallV2Url("/calendars/") → "https://us-west-2.recall.ai/api/v2/calendars/"
+ */
+export function recallV2Url(path = "/") {
+  if (!RECALL_API_V2_BASE) {
+    throw new Error("RECALL_REGION is not set");
+  }
+  const normalized = path.startsWith("/") ? path : `/${path}`;
+  return `${RECALL_API_V2_BASE}${normalized}`;
+}
+
+const GOOGLE_OAUTH_CLIENT_ID = process.env.GOOGLE_OAUTH_CLIENT_ID?.trim() || null;
+const GOOGLE_OAUTH_CLIENT_SECRET =
+  process.env.GOOGLE_OAUTH_CLIENT_SECRET?.trim() || null;
+const MICROSOFT_OAUTH_CLIENT_ID =
+  process.env.MICROSOFT_OAUTH_CLIENT_ID?.trim() || null;
+const MICROSOFT_OAUTH_CLIENT_SECRET =
+  process.env.MICROSOFT_OAUTH_CLIENT_SECRET?.trim() || null;
+const CALENDAR_OAUTH_REDIRECT_URI =
+  process.env.CALENDAR_OAUTH_REDIRECT_URI?.trim() || null;
+
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY?.trim() || null;
+const OPENAI_MODEL = process.env.OPENAI_MODEL?.trim() || "gpt-4o-mini";
 
 export const config = {
   port: PORT,
@@ -127,6 +166,22 @@ export const config = {
     workspaceVerificationSecret: RECALL_WORKSPACE_VERIFICATION_SECRET,
     webhookSecret: RECALL_SVIX_WEBHOOK_SECRET,
     apiBase: RECALL_API_BASE,
+    apiV2Base: RECALL_API_V2_BASE,
+  },
+  openai: {
+    apiKey: OPENAI_API_KEY,
+    model: OPENAI_MODEL,
+  },
+  calendar: {
+    oauthRedirectUri: CALENDAR_OAUTH_REDIRECT_URI,
+    google: {
+      clientId: GOOGLE_OAUTH_CLIENT_ID,
+      clientSecret: GOOGLE_OAUTH_CLIENT_SECRET,
+    },
+    microsoft: {
+      clientId: MICROSOFT_OAUTH_CLIENT_ID,
+      clientSecret: MICROSOFT_OAUTH_CLIENT_SECRET,
+    },
   },
 };
 

@@ -1,30 +1,30 @@
+import { createId, nowIso } from "./ids.js";
+
 /**
- * Local mirror of a Recall bot artifact.
- * @see https://docs.recall.ai/reference/bot_create
+ * Local mirror of a Recall bot attached to an interview.
  *
  * @typedef {object} Bot
- * @property {string} id                 Recall bot id
- * @property {string} workspaceId        Local workspace this bot belongs to
+ * @property {string} id                 Recall bot id (same as Recall's id when live)
+ * @property {string} interviewId
  * @property {string} meetingUrl
  * @property {string} botName
- * @property {string | null} joinAt      ISO timestamp passed to Create Bot
- * @property {string} status             Last known bot status from webhooks
+ * @property {string | null} joinAt
+ * @property {string} status
  * @property {string} createdAt
  * @property {string} updatedAt
  */
 
 /** @returns {Bot} */
-export function createBotModel(overrides = {}) {
-  const now = new Date().toISOString();
+export function createBotModel(input = {}) {
+  const now = nowIso();
   return {
-    id: "",
-    workspaceId: "",
-    meetingUrl: "",
-    botName: "Workspace Bot",
-    joinAt: null,
-    status: "unknown",
-    createdAt: now,
-    updatedAt: now,
-    ...overrides,
+    id: input.id || createId("bot"),
+    interviewId: input.interviewId || "",
+    meetingUrl: input.meetingUrl || "",
+    botName: input.botName || "Shop Talk",
+    joinAt: input.joinAt ?? null,
+    status: input.status || "created",
+    createdAt: input.createdAt || now,
+    updatedAt: input.updatedAt || now,
   };
 }

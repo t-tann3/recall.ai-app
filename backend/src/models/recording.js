@@ -1,28 +1,30 @@
+import { createId, nowIso } from "./ids.js";
+
 /**
- * Local mirror of a Recall recording artifact.
- * @see https://docs.recall.ai/docs/recording-webhooks
+ * Local mirror of a Recall recording for an interview.
  *
  * @typedef {object} Recording
- * @property {string} id                 Recall recording id
- * @property {string} workspaceId
+ * @property {string} id
+ * @property {string} interviewId
  * @property {string | null} botId
- * @property {string | null} mediaUrl    Playback / download URL when ready
- * @property {"pending" | "done" | "failed"} status
+ * @property {string | null} mediaUrl
+ * @property {"pending" | "processing" | "done" | "failed"} status
+ * @property {number | null} durationSeconds
  * @property {string} createdAt
  * @property {string} updatedAt
  */
 
 /** @returns {Recording} */
-export function createRecordingModel(overrides = {}) {
-  const now = new Date().toISOString();
+export function createRecordingModel(input = {}) {
+  const now = nowIso();
   return {
-    id: "",
-    workspaceId: "",
-    botId: null,
-    mediaUrl: null,
-    status: "pending",
-    createdAt: now,
-    updatedAt: now,
-    ...overrides,
+    id: input.id || createId("rec"),
+    interviewId: input.interviewId || "",
+    botId: input.botId ?? null,
+    mediaUrl: input.mediaUrl ?? null,
+    status: input.status || "pending",
+    durationSeconds: input.durationSeconds ?? null,
+    createdAt: input.createdAt || now,
+    updatedAt: input.updatedAt || now,
   };
 }

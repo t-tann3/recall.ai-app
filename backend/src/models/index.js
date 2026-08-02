@@ -5,6 +5,8 @@ export { createApplication } from "./application.js";
 export { createInterview } from "./interview.js";
 export { createInterviewPanelist } from "./interviewPanelist.js";
 export { createCalendarEvent } from "./calendarEvent.js";
+export { createCalendarConnection, toPublicCalendarConnection } from "./calendarConnection.js";
+
 
 // Recall capture models (linked from Interview via botId / recordingId / transcriptId)
 export { createBotModel } from "./bot.js";

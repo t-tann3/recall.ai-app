@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { db } from "../store/db.js";
 import { handleRouteError } from "./helpers.js";
+import { generateScorecardFromTranscript } from "../services/scorecardAi.js";
+import { config } from "../config.js";
 
 const router = Router();
 
@@ -23,7 +25,100 @@ router.get("/", (req, res) => {
 router.get("/:id", (req, res) => {
   const detail = db.getInterviewDetail(req.params.id);
   if (!detail) return res.status(404).json({ ok: false, message: "Interview not found" });
-  return res.json({ ok: true, ...detail });
+
+  const scorecard = req.hiringManager
+    ? db.getScorecardResult(req.params.id, req.hiringManager.id)
+    : null;
+
+  return res.json({ ok: true, ...detail, scorecard });
+});
+
+/**
+ * POST /api/interviews/:id/generate-scorecard
+ * Uses the logged-in HM's criteria + interview transcript.
+ */
+router.post("/:id/generate-scorecard", async (req, res) => {
+  try {
+    if (!req.hiringManager?.id) {
+      throw Object.assign(new Error("You must be signed in"), { status: 401 });
+    }
+
+    const detail = db.getInterviewDetail(req.params.id);
+    if (!detail) {
+      throw Object.assign(new Error("Interview not found"), { status: 404 });
+    }
+
+    const transcript = detail.transcript;
+    if (!transcript || transcript.status !== "done" || !transcript.lines?.length) {
+      throw Object.assign(
+        new Error("Transcript is not ready for this interview yet"),
+        { status: 400 },
+      );
+    }
+
+    const criteria = db.getOrCreateCriteriaForJob(
+      req.hiringManager.id,
+      detail.interview.jobPostingId,
+    );
+
+    const draft = await generateScorecardFromTranscript({
+      criteriaItems: criteria.items,
+      transcriptLines: transcript.lines,
+      jobTitle: detail.jobPosting?.title,
+      interviewType: detail.interview.type,
+      candidateName: detail.candidate?.name,
+    });
+
+    const scorecard = db.upsertScorecardResult({
+      interviewId: detail.interview.id,
+      hiringManagerId: req.hiringManager.id,
+      ...draft,
+      source: "ai",
+    });
+
+    return res.json({
+      ok: true,
+      scorecard,
+      criteria,
+      usedOpenAI: Boolean(config.openai.apiKey),
+    });
+  } catch (err) {
+    return handleRouteError(res, err);
+  }
+});
+
+/**
+ * PUT /api/interviews/:id/scorecard
+ * Persist HM edits to the scorecard.
+ */
+router.put("/:id/scorecard", (req, res) => {
+  try {
+    if (!req.hiringManager?.id) {
+      throw Object.assign(new Error("You must be signed in"), { status: 401 });
+    }
+
+    const interview = db.getInterview(req.params.id);
+    if (!interview) {
+      throw Object.assign(new Error("Interview not found"), { status: 404 });
+    }
+
+    const body = req.body || {};
+    const scorecard = db.upsertScorecardResult({
+      interviewId: interview.id,
+      hiringManagerId: req.hiringManager.id,
+      recommendation: body.recommendation || "",
+      score: body.score ?? null,
+      criteriaScores: body.criteriaScores || [],
+      strengths: body.strengths || "",
+      concerns: body.concerns || "",
+      notes: body.notes || "",
+      source: "manual",
+    });
+
+    return res.json({ ok: true, scorecard });
+  } catch (err) {
+    return handleRouteError(res, err);
+  }
 });
 
 router.post("/", (req, res) => {

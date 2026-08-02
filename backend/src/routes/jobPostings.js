@@ -47,6 +47,7 @@ router.post("/", (req, res) => {
     };
 
     const jobPosting = db.addJobPosting(body);
+    db.getOrCreateCriteriaForJob(req.hiringManager.id, jobPosting.id);
     return res.status(201).json({ ok: true, jobPosting });
   } catch (err) {
     return handleRouteError(res, err);
