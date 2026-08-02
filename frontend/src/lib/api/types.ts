@@ -71,7 +71,8 @@ export type CreateWorkspaceBody = {
 };
 
 export type CreateBotBody = {
-  meetingUrl: string;
+  interviewId: string;
+  meetingUrl?: string;
   botName?: string;
   joinAt?: string;
 };

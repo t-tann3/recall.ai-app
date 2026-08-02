@@ -25,6 +25,17 @@ export const endpoints = {
   interviews: {
     list: "/api/interviews",
     byId: (id: string) => `/api/interviews/${id}`,
+    generateScorecard: (id: string) => `/api/interviews/${id}/generate-scorecard`,
+    scorecard: (id: string) => `/api/interviews/${id}/scorecard`,
+  },
+  scorecardCriteria: {
+    me: "/api/scorecard-criteria",
+  },
+  calendar: {
+    status: "/api/calendar/status",
+    connections: "/api/calendar/connections",
+    oauthStart: "/api/calendar/oauth/start",
+    connectionById: (id: string) => `/api/calendar/connections/${id}`,
   },
   workspaces: {
     list: "/api/workspaces",

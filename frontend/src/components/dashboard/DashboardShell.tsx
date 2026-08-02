@@ -80,33 +80,52 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="border-t border-white/10 p-3">
-            <Link
-              href="/settings"
-              className={`block rounded-md px-3 py-2 text-sm transition ${
-                pathname === "/settings"
-                  ? "bg-white/10 text-white"
-                  : "text-white/65 hover:bg-white/5 hover:text-white"
-              }`}
-            >
-              Settings
-            </Link>
             {hiringManager ? (
-              <div className="mt-2 rounded-md px-3 py-2">
-                <p className="truncate text-xs font-medium text-white/80">
-                  {hiringManager.name}
-                </p>
-                <p className="truncate text-[11px] text-white/40">
-                  {hiringManager.email}
-                </p>
+              <div className="space-y-1">
+                <Link
+                  href="/settings"
+                  className={`flex items-center gap-3 rounded-md px-2 py-2 transition ${
+                    pathname === "/settings"
+                      ? "bg-white/10 text-white"
+                      : "text-white/80 hover:bg-white/5 hover:text-white"
+                  }`}
+                  aria-label="Open account settings"
+                >
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-recall-blue text-sm font-semibold text-white shadow-[0_0_16px_rgba(43,98,255,0.35)]">
+                    {hiringManager.name.trim().charAt(0).toUpperCase() || "U"}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block truncate text-xs font-medium">
+                      {hiringManager.name}
+                    </span>
+                    <span className="block truncate text-[11px] text-white/40">
+                      {hiringManager.email}
+                    </span>
+                    <span className="mt-0.5 block text-[10px] font-medium uppercase tracking-[0.12em] text-white/35">
+                      Settings
+                    </span>
+                  </span>
+                </Link>
                 <button
                   type="button"
                   onClick={logout}
-                  className="mt-2 text-[11px] font-medium text-recall-sky hover:text-white"
+                  className="w-full rounded-md px-3 py-1.5 text-left text-[11px] font-medium text-recall-sky hover:bg-white/5 hover:text-white"
                 >
                   Sign out
                 </button>
               </div>
-            ) : null}
+            ) : (
+              <Link
+                href="/settings"
+                className={`block rounded-md px-3 py-2 text-sm transition ${
+                  pathname === "/settings"
+                    ? "bg-white/10 text-white"
+                    : "text-white/65 hover:bg-white/5 hover:text-white"
+                }`}
+              >
+                Settings
+              </Link>
+            )}
           </div>
         </aside>
 

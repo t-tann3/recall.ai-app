@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { JobScorecardCriteriaEditor } from "@/components/jobs/JobScorecardCriteriaEditor";
 import { getJobPosting, type Candidate, type Interview } from "@/lib/api/hr";
 
 function formatWhen(iso: string | null | undefined) {
@@ -313,6 +314,8 @@ export default function JobDetailPage() {
           )}
         </section>
       </div>
+
+      <JobScorecardCriteriaEditor jobPostingId={jobPosting.id} />
     </div>
   );
 }

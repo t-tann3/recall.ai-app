@@ -214,6 +214,66 @@ export async function createJobPosting(body: {
   return data.jobPosting;
 }
 
+export type InterviewRecording = {
+  id: string;
+  interviewId: string;
+  botId: string | null;
+  mediaUrl: string | null;
+  status: "pending" | "processing" | "done" | "failed";
+  durationSeconds: number | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type InterviewTranscriptLine = {
+  speaker: string;
+  text: string;
+  startSeconds: number;
+  endSeconds: number | null;
+};
+
+export type InterviewTranscript = {
+  id: string;
+  interviewId: string;
+  recordingId: string | null;
+  status: "pending" | "processing" | "done" | "failed";
+  lines: InterviewTranscriptLine[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+export async function getInterview(id: string) {
+  const { data } = await api.get<{
+    ok: true;
+    interview: Interview;
+    candidate: Candidate | null;
+    jobPosting: JobPosting | null;
+    recording: InterviewRecording | null;
+    transcript: InterviewTranscript | null;
+    scorecard?: {
+      id: string;
+      interviewId: string;
+      hiringManagerId: string;
+      recommendation: string;
+      score: number | null;
+      criteriaScores: {
+        criteriaId: string;
+        label: string;
+        score: number;
+        evidence: string;
+      }[];
+      strengths: string;
+      concerns: string;
+      notes: string;
+      source: "ai" | "manual";
+      createdAt: string;
+      updatedAt: string;
+    } | null;
+  }>(endpoints.interviews.byId(id));
+
+  return data;
+}
+
 export async function listInterviews() {
   const { data } = await api.get<{ ok: true; interviews: unknown[] }>(
     endpoints.interviews.list,

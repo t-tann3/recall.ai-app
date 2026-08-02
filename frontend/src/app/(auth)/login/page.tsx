@@ -1,16 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import { FormEvent, Suspense, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { FormEvent, useEffect, useState } from "react";
 import { AuthField, AuthLayout } from "@/components/auth/AuthLayout";
 import { useAuth } from "@/lib/AuthProvider";
 
-function LoginForm() {
+export default function LoginPage() {
   const { login, isAuthenticated, ready } = useAuth();
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const next = searchParams.get("next") || "/";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -18,8 +16,8 @@ function LoginForm() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (ready && isAuthenticated) router.replace(next);
-  }, [ready, isAuthenticated, router, next]);
+    if (ready && isAuthenticated) router.replace("/");
+  }, [ready, isAuthenticated, router]);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -27,7 +25,7 @@ function LoginForm() {
     setSubmitting(true);
     try {
       await login(email, password);
-      router.replace(next);
+      router.replace("/");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
     } finally {
@@ -83,19 +81,5 @@ function LoginForm() {
         </p>
       </form>
     </AuthLayout>
-  );
-}
-
-export default function LoginPage() {
-  return (
-    <Suspense
-      fallback={
-        <div className="flex min-h-screen items-center justify-center text-sm text-recall-muted">
-          Loading…
-        </div>
-      }
-    >
-      <LoginForm />
-    </Suspense>
   );
 }
