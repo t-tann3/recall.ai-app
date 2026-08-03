@@ -6,22 +6,35 @@ import { requireAuth } from "../middleware/requireAuth.js";
 
 const router = Router();
 
-router.get("/", requireAuth, (_req, res) => {
-  res.json({
-    ok: true,
-    hiringManagers: db.listHiringManagers().map(toPublicHiringManager),
-  });
+/** Org members only — never list users across tenants. */
+router.get("/", requireAuth, (req, res) => {
+  const members = db
+    .listMemberships({ organizationId: req.orgId })
+    .map((m) => ({
+      membership: m,
+      hiringManager: toPublicHiringManager(db.getHiringManager(m.userId)),
+    }))
+    .filter((row) => row.hiringManager);
+
+  res.json({ ok: true, members, hiringManagers: members.map((m) => m.hiringManager) });
 });
 
 router.get("/:id", requireAuth, (req, res) => {
+  const membership = db.findMembership(req.orgId, req.params.id);
+  if (!membership) {
+    return res.status(404).json({ ok: false, message: "Hiring manager not found" });
+  }
   const row = db.getHiringManager(req.params.id);
-  if (!row) return res.status(404).json({ ok: false, message: "Hiring manager not found" });
   return res.json({ ok: true, hiringManager: toPublicHiringManager(row) });
 });
 
 router.post("/", requireAuth, (req, res) => {
   try {
-    // Prefer /api/auth/signup for password accounts. This remains for admin-style creates.
+    if (req.role !== "admin") {
+      throw Object.assign(new Error("Only org admins can invite users this way"), {
+        status: 403,
+      });
+    }
     if (!req.body?.passwordHash && req.body?.password) {
       return res.status(400).json({
         ok: false,
@@ -29,6 +42,11 @@ router.post("/", requireAuth, (req, res) => {
       });
     }
     const hiringManager = db.addHiringManager(req.body || {});
+    db.addMembership({
+      organizationId: req.orgId,
+      userId: hiringManager.id,
+      role: req.body?.role || "hiring_manager",
+    });
     return res.status(201).json({
       ok: true,
       hiringManager: toPublicHiringManager(hiringManager),

@@ -11,6 +11,7 @@ import { createId, nowIso } from "./ids.js";
  * @property {string | null} linkedInUrl
  * @property {string | null} source
  * @property {CandidateStage} stage
+ * @property {string} orgId
  * @property {string} createdAt
  * @property {string} updatedAt
  */
@@ -26,6 +27,7 @@ export function createCandidate(input = {}) {
     linkedInUrl: input.linkedInUrl ?? null,
     source: input.source ?? null,
     stage: input.stage || "applied",
+    orgId: input.orgId || "",
     createdAt: input.createdAt || now,
     updatedAt: input.updatedAt || now,
   };

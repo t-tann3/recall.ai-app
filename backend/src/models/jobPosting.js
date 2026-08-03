@@ -12,6 +12,7 @@ import { createId, nowIso } from "./ids.js";
  * @property {string} description
  * @property {JobPostingStatus} status
  * @property {string} hiringManagerId  Owner of this role
+ * @property {string} orgId
  * @property {string} createdAt
  * @property {string} updatedAt
  */
@@ -28,6 +29,7 @@ export function createJobPosting(input = {}) {
     description: input.description || "",
     status: input.status || "open",
     hiringManagerId: input.hiringManagerId || "",
+    orgId: input.orgId || "",
     createdAt: input.createdAt || now,
     updatedAt: input.updatedAt || now,
   };

@@ -1,10 +1,21 @@
-import { getHiringManagerFromAuthHeader } from "../auth/service.js";
+import { getTenantFromAuthHeader } from "../auth/service.js";
 import { handleRouteError } from "../routes/helpers.js";
 
-/** Attach req.hiringManager when Authorization: Bearer <token> is valid. */
+/**
+ * Attach tenant context:
+ *   req.hiringManager, req.organization, req.membership,
+ *   req.userId, req.orgId, req.role, req.tenant
+ */
 export function requireAuth(req, res, next) {
   try {
-    req.hiringManager = getHiringManagerFromAuthHeader(req.headers.authorization);
+    const tenant = getTenantFromAuthHeader(req.headers.authorization);
+    req.hiringManager = tenant.hiringManager;
+    req.organization = tenant.organization;
+    req.membership = tenant.membership;
+    req.userId = tenant.userId;
+    req.orgId = tenant.orgId;
+    req.role = tenant.role;
+    req.tenant = tenant;
     next();
   } catch (err) {
     return handleRouteError(res, err);

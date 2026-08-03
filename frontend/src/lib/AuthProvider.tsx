@@ -13,11 +13,16 @@ import {
   login as loginRequest,
   signup as signupRequest,
   type PublicHiringManager,
+  type PublicMembership,
+  type PublicOrganization,
 } from "@/lib/api/auth";
 import { getStoredToken, setStoredToken } from "@/lib/api/client";
 
 type AuthContextValue = {
   hiringManager: PublicHiringManager | null;
+  organization: PublicOrganization | null;
+  membership: PublicMembership | null;
+  role: PublicMembership["role"] | null;
   ready: boolean;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
@@ -27,6 +32,7 @@ type AuthContextValue = {
     password: string;
     team?: string;
     title?: string;
+    organizationName?: string;
   }) => Promise<void>;
   logout: () => void;
 };
@@ -37,6 +43,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [hiringManager, setHiringManager] = useState<PublicHiringManager | null>(
     null,
   );
+  const [organization, setOrganization] = useState<PublicOrganization | null>(null);
+  const [membership, setMembership] = useState<PublicMembership | null>(null);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -49,11 +57,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
       try {
-        const { hiringManager: me } = await getMe();
-        if (!cancelled) setHiringManager(me);
+        const me = await getMe();
+        if (!cancelled) {
+          setHiringManager(me.hiringManager);
+          setOrganization(me.organization);
+          setMembership(me.membership);
+        }
       } catch {
         setStoredToken(null);
-        if (!cancelled) setHiringManager(null);
+        if (!cancelled) {
+          setHiringManager(null);
+          setOrganization(null);
+          setMembership(null);
+        }
       } finally {
         if (!cancelled) setReady(true);
       }
@@ -69,6 +85,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const result = await loginRequest({ email, password });
     setStoredToken(result.token);
     setHiringManager(result.hiringManager);
+    setOrganization(result.organization);
+    setMembership(result.membership);
   }, []);
 
   const signup = useCallback(
@@ -78,10 +96,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       password: string;
       team?: string;
       title?: string;
+      organizationName?: string;
     }) => {
       const result = await signupRequest(input);
       setStoredToken(result.token);
       setHiringManager(result.hiringManager);
+      setOrganization(result.organization);
+      setMembership(result.membership);
     },
     [],
   );
@@ -89,18 +110,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = useCallback(() => {
     setStoredToken(null);
     setHiringManager(null);
+    setOrganization(null);
+    setMembership(null);
   }, []);
 
   const value = useMemo(
     () => ({
       hiringManager,
+      organization,
+      membership,
+      role: membership?.role ?? null,
       ready,
-      isAuthenticated: Boolean(hiringManager),
+      isAuthenticated: Boolean(hiringManager && organization),
       login,
       signup,
       logout,
     }),
-    [hiringManager, ready, login, signup, logout],
+    [hiringManager, organization, membership, ready, login, signup, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

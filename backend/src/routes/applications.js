@@ -1,20 +1,32 @@
 import { Router } from "express";
 import { db } from "../store/db.js";
 import { handleRouteError } from "./helpers.js";
+import { assertCanAccessJob, assertCanManageJobs } from "../auth/access.js";
 
 const router = Router();
 
 router.get("/", (req, res) => {
-  const applications = db.listApplications({
-    candidateId: req.query.candidateId,
-    jobPostingId: req.query.jobPostingId,
-  });
+  const applications = db.listApplicationsVisibleTo(
+    { orgId: req.orgId, userId: req.userId, role: req.role },
+    {
+      candidateId: req.query.candidateId,
+      jobPostingId: req.query.jobPostingId,
+    },
+  );
   res.json({ ok: true, applications });
 });
 
 router.get("/:id", (req, res) => {
   const row = db.getApplication(req.params.id);
-  if (!row) return res.status(404).json({ ok: false, message: "Application not found" });
+  if (!row || row.orgId !== req.orgId) {
+    return res.status(404).json({ ok: false, message: "Application not found" });
+  }
+
+  try {
+    assertCanAccessJob(req.tenant, row.jobPostingId);
+  } catch {
+    return res.status(404).json({ ok: false, message: "Application not found" });
+  }
 
   return res.json({
     ok: true,
@@ -27,7 +39,13 @@ router.get("/:id", (req, res) => {
 
 router.post("/", (req, res) => {
   try {
-    const application = db.addApplication(req.body || {});
+    assertCanManageJobs(req.tenant);
+    const body = req.body || {};
+    assertCanAccessJob(req.tenant, body.jobPostingId);
+    const application = db.addApplication({
+      ...body,
+      orgId: req.orgId,
+    });
     return res.status(201).json({ ok: true, application });
   } catch (err) {
     return handleRouteError(res, err);

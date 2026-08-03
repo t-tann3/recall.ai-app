@@ -19,6 +19,7 @@ import { createId, nowIso } from "./ids.js";
  * @property {string | null} botId          Recall bot (under the hood)
  * @property {string | null} recordingId
  * @property {string | null} transcriptId
+ * @property {string} orgId
  * @property {string} createdAt
  * @property {string} updatedAt
  */
@@ -39,6 +40,7 @@ export function createInterview(input = {}) {
     botId: input.botId ?? null,
     recordingId: input.recordingId ?? null,
     transcriptId: input.transcriptId ?? null,
+    orgId: input.orgId || "",
     createdAt: input.createdAt || now,
     updatedAt: input.updatedAt || now,
   };

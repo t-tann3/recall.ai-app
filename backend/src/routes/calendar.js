@@ -50,7 +50,7 @@ router.get("/status", requireAuth, (_req, res) => {
 router.get("/connections", requireAuth, (req, res) => {
   const connections = db
     .listCalendarConnections({ hiringManagerId: req.hiringManager.id })
-    .filter((c) => c.status !== "disconnected")
+    .filter((c) => c.status !== "disconnected" && c.orgId === req.orgId)
     .map(toPublicCalendarConnection);
   res.json({ ok: true, connections });
 });
@@ -117,6 +117,16 @@ router.get("/oauth/callback", async (req, res) => {
 
     const tokens = await exchangeAuthorizationCode(platform, String(code));
     const provider = getProviderConfig(platform);
+    const membership = db.getPrimaryMembership(hiringManagerId);
+    const orgId = membership?.organizationId;
+    if (!orgId) {
+      return res.redirect(
+        frontendSettingsRedirect({
+          calendar: "error",
+          message: "No organization membership for this account",
+        }),
+      );
+    }
 
     let recallCalendarId = null;
     let status = "connected";
@@ -132,7 +142,6 @@ router.get("/oauth/callback", async (req, res) => {
       });
       recallCalendarId = recallCalendar.id || recallCalendar.calendar_id || null;
     } catch (err) {
-      // Still save the connection so Settings can show status; Recall can be wired later.
       status = "error";
       lastError = err instanceof Error ? err.message : "Failed to create Recall calendar";
     }
@@ -150,6 +159,7 @@ router.get("/oauth/callback", async (req, res) => {
         platformEmail: tokens.platformEmail,
         oauthRefreshToken: tokens.refreshToken,
         recallCalendarId,
+        orgId,
         status,
         lastError,
       });
@@ -160,6 +170,7 @@ router.get("/oauth/callback", async (req, res) => {
         platformEmail: tokens.platformEmail,
         oauthRefreshToken: tokens.refreshToken,
         recallCalendarId,
+        orgId,
         status,
         lastError,
       });
@@ -185,7 +196,7 @@ router.get("/oauth/callback", async (req, res) => {
 router.delete("/connections/:id", requireAuth, async (req, res) => {
   try {
     const row = db.getCalendarConnection(req.params.id);
-    if (!row || row.hiringManagerId !== req.hiringManager.id) {
+    if (!row || row.hiringManagerId !== req.hiringManager.id || row.orgId !== req.orgId) {
       return res.status(404).json({ ok: false, message: "Calendar connection not found" });
     }
 

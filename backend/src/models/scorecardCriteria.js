@@ -13,6 +13,7 @@ import { createId, nowIso } from "./ids.js";
  * @property {string} id
  * @property {string} hiringManagerId
  * @property {string} jobPostingId
+ * @property {string} orgId
  * @property {ScorecardCriterion[]} items
  * @property {string} createdAt
  * @property {string} updatedAt
@@ -39,6 +40,7 @@ export function createScorecardCriteria(input = {}) {
     id: input.id || createId("rubric"),
     hiringManagerId: input.hiringManagerId || "",
     jobPostingId: input.jobPostingId ?? null,
+    orgId: input.orgId || "",
     items,
     createdAt: input.createdAt || now,
     updatedAt: input.updatedAt || now,

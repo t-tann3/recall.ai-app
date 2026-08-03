@@ -6,9 +6,9 @@ export { createInterview } from "./interview.js";
 export { createInterviewPanelist } from "./interviewPanelist.js";
 export { createCalendarEvent } from "./calendarEvent.js";
 export { createCalendarConnection, toPublicCalendarConnection } from "./calendarConnection.js";
+export { createOrganization, toPublicOrganization } from "./organization.js";
+export { createMembership, toPublicMembership } from "./membership.js";
 
-
-// Recall capture models (linked from Interview via botId / recordingId / transcriptId)
 export { createBotModel } from "./bot.js";
 export { createRecordingModel } from "./recording.js";
 export { createTranscriptModel } from "./transcript.js";

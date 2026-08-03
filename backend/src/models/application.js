@@ -10,6 +10,7 @@ import { createId, nowIso } from "./ids.js";
  * @property {string} candidateId
  * @property {string} jobPostingId
  * @property {ApplicationStage} stage
+ * @property {string} orgId
  * @property {string} createdAt
  * @property {string} updatedAt
  */
@@ -22,6 +23,7 @@ export function createApplication(input = {}) {
     candidateId: input.candidateId || "",
     jobPostingId: input.jobPostingId || "",
     stage: input.stage || "applied",
+    orgId: input.orgId || "",
     createdAt: input.createdAt || now,
     updatedAt: input.updatedAt || now,
   };

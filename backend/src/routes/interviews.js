@@ -1,17 +1,25 @@
 import { Router } from "express";
 import { db } from "../store/db.js";
 import { handleRouteError } from "./helpers.js";
+import {
+  assertCanAccessInterview,
+  assertCanAccessJob,
+  assertCanManageJobs,
+} from "../auth/access.js";
 import { generateScorecardFromTranscript } from "../services/scorecardAi.js";
 import { config } from "../config.js";
 
 const router = Router();
 
 router.get("/", (req, res) => {
-  const interviews = db.listInterviews({
-    candidateId: req.query.candidateId,
-    jobPostingId: req.query.jobPostingId,
-    applicationId: req.query.applicationId,
-  });
+  const interviews = db.listInterviewsVisibleTo(
+    { orgId: req.orgId, userId: req.userId, role: req.role },
+    {
+      candidateId: req.query.candidateId,
+      jobPostingId: req.query.jobPostingId,
+      applicationId: req.query.applicationId,
+    },
+  );
 
   const items = interviews.map((interview) => ({
     interview,
@@ -23,25 +31,21 @@ router.get("/", (req, res) => {
 });
 
 router.get("/:id", (req, res) => {
-  const detail = db.getInterviewDetail(req.params.id);
-  if (!detail) return res.status(404).json({ ok: false, message: "Interview not found" });
+  try {
+    assertCanAccessInterview(req.tenant, req.params.id);
+    const detail = db.getInterviewDetail(req.params.id);
+    if (!detail) return res.status(404).json({ ok: false, message: "Interview not found" });
 
-  const scorecard = req.hiringManager
-    ? db.getScorecardResult(req.params.id, req.hiringManager.id)
-    : null;
-
-  return res.json({ ok: true, ...detail, scorecard });
+    const scorecard = db.getScorecardResult(req.params.id, req.userId);
+    return res.json({ ok: true, ...detail, scorecard });
+  } catch (err) {
+    return handleRouteError(res, err);
+  }
 });
 
-/**
- * POST /api/interviews/:id/generate-scorecard
- * Uses the logged-in HM's criteria + interview transcript.
- */
 router.post("/:id/generate-scorecard", async (req, res) => {
   try {
-    if (!req.hiringManager?.id) {
-      throw Object.assign(new Error("You must be signed in"), { status: 401 });
-    }
+    assertCanAccessInterview(req.tenant, req.params.id);
 
     const detail = db.getInterviewDetail(req.params.id);
     if (!detail) {
@@ -57,7 +61,7 @@ router.post("/:id/generate-scorecard", async (req, res) => {
     }
 
     const criteria = db.getOrCreateCriteriaForJob(
-      req.hiringManager.id,
+      detail.jobPosting?.hiringManagerId || req.userId,
       detail.interview.jobPostingId,
     );
 
@@ -71,7 +75,7 @@ router.post("/:id/generate-scorecard", async (req, res) => {
 
     const scorecard = db.upsertScorecardResult({
       interviewId: detail.interview.id,
-      hiringManagerId: req.hiringManager.id,
+      hiringManagerId: req.userId,
       ...draft,
       source: "ai",
     });
@@ -87,16 +91,9 @@ router.post("/:id/generate-scorecard", async (req, res) => {
   }
 });
 
-/**
- * PUT /api/interviews/:id/scorecard
- * Persist HM edits to the scorecard.
- */
 router.put("/:id/scorecard", (req, res) => {
   try {
-    if (!req.hiringManager?.id) {
-      throw Object.assign(new Error("You must be signed in"), { status: 401 });
-    }
-
+    assertCanAccessInterview(req.tenant, req.params.id);
     const interview = db.getInterview(req.params.id);
     if (!interview) {
       throw Object.assign(new Error("Interview not found"), { status: 404 });
@@ -105,7 +102,7 @@ router.put("/:id/scorecard", (req, res) => {
     const body = req.body || {};
     const scorecard = db.upsertScorecardResult({
       interviewId: interview.id,
-      hiringManagerId: req.hiringManager.id,
+      hiringManagerId: req.userId,
       recommendation: body.recommendation || "",
       score: body.score ?? null,
       criteriaScores: body.criteriaScores || [],
@@ -123,16 +120,20 @@ router.put("/:id/scorecard", (req, res) => {
 
 router.post("/", (req, res) => {
   try {
+    assertCanManageJobs(req.tenant);
     const body = req.body || {};
-    const interview = db.addInterview(body);
+    assertCanAccessJob(req.tenant, body.jobPostingId);
 
-    if (body.hiringManagerId) {
-      db.addInterviewPanelist({
-        interviewId: interview.id,
-        hiringManagerId: body.hiringManagerId,
-        role: body.panelistRole || "interviewer",
-      });
-    }
+    const interview = db.addInterview({
+      ...body,
+      orgId: req.orgId,
+    });
+
+    db.addInterviewPanelist({
+      interviewId: interview.id,
+      hiringManagerId: req.userId,
+      role: body.panelistRole || "interviewer",
+    });
 
     if (body.calendar) {
       db.addCalendarEvent({
@@ -154,9 +155,20 @@ router.post("/", (req, res) => {
 
 router.post("/:id/panelists", (req, res) => {
   try {
+    assertCanAccessInterview(req.tenant, req.params.id);
+    assertCanManageJobs(req.tenant);
+
+    const panelistUserId = req.body?.hiringManagerId || req.body?.userId;
+    const member = db.findMembership(req.orgId, panelistUserId);
+    if (!member) {
+      throw Object.assign(new Error("Panelist must be a member of this organization"), {
+        status: 400,
+      });
+    }
+
     const panelist = db.addInterviewPanelist({
       interviewId: req.params.id,
-      hiringManagerId: req.body?.hiringManagerId,
+      hiringManagerId: panelistUserId,
       role: req.body?.role,
     });
     return res.status(201).json({

@@ -1,38 +1,21 @@
-# Backend — Shop Talk
+# Shop Talk API
 
-## Core HR models
+Express backend for the hiring + Recall capture loop. See the [root README](../README.md) for product context, env vars, and the happy path.
 
-```
-HiringManager
-    └── owns → JobPosting
-Candidate
-    └── Application → JobPosting
-Interview
-    ├── candidateId → Candidate
-    ├── jobPostingId → JobPosting
-    ├── applicationId → Application (optional)
-    ├── calendarEventId ↔ CalendarEvent
-    ├── panelists → InterviewPanelist → HiringManager
-    └── botId / recordingId / transcriptId → Recall (later)
+```bash
+npm install
+cp .env.example .env
+npm run dev     # http://localhost:3001
+npm test
 ```
 
-In-memory store: `src/store/db.js` (enforces FKs). Seeded on boot.
+Key modules:
 
-## Core API
-
-| Method | Path |
-|--------|------|
-| GET/POST | `/api/hiring-managers` |
-| GET/POST | `/api/candidates` |
-| GET/POST | `/api/job-postings` |
-| GET/POST | `/api/applications` |
-| GET/POST | `/api/interviews` |
-| POST | `/api/interviews/:id/panelists` |
-| GET/POST | `/api/calendar-events` |
-
-`GET /api/interviews/:id` returns interview + candidate + job + application + calendar + panelists.
-
-## Recall / legacy stubs
-
-- `POST /api/webhooks/recall` — Svix verify
-- `/api/bots`, `/api/workspaces/*` — still 501 stubs
+| Path | Role |
+|------|------|
+| `src/store/db.js` | Domain store + FK checks |
+| `src/store/persist.js` | SQLite snapshots |
+| `src/services/recallBots.js` | Create bot / normalize transcripts |
+| `src/services/recallWebhooks.js` | `bot.*` / recording / transcript handlers |
+| `src/services/calendarOauth.js` | Google OAuth → Recall Calendar V2 |
+| `src/services/scorecardAi.js` | LLM or heuristic scorecards |

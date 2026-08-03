@@ -3,14 +3,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/AuthProvider";
-import { useWorkspaces } from "@/lib/useWorkspaces";
-import { statusLabel } from "@/lib/workspaces";
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { workspaces, ready } = useWorkspaces();
-  const { hiringManager, logout } = useAuth();
-  const inWorkspace = pathname.startsWith("/workspaces/");
+  const { hiringManager, organization, role, logout } = useAuth();
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-recall-surface text-recall-foreground">
@@ -28,7 +24,9 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
               </span>
               <div>
                 <p className="text-sm font-semibold tracking-tight">Shop Talk</p>
-                <p className="text-[11px] text-white/45">Conversations, organized</p>
+                <p className="text-[11px] text-white/45">
+                  {organization?.name || "Interview insights"}
+                </p>
               </div>
             </Link>
           </div>
@@ -44,39 +42,16 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             >
               Home
             </Link>
-
-            <p className="mt-4 px-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/35">
-              Captures
-            </p>
-            {ready ? (
-              workspaces.length === 0 ? (
-                <p className="px-3 py-2 text-xs text-white/40">None yet</p>
-              ) : (
-                workspaces.slice(0, 8).map((ws) => {
-                  const active = pathname.startsWith(`/workspaces/${ws.id}`);
-                  return (
-                    <Link
-                      key={ws.id}
-                      href={`/workspaces/${ws.id}/summary`}
-                      className={`rounded-md px-3 py-2 transition ${
-                        active
-                          ? "bg-white/10 text-white"
-                          : "text-white/65 hover:bg-white/5 hover:text-white"
-                      }`}
-                    >
-                      <span className="block truncate text-sm font-medium">
-                        {ws.title}
-                      </span>
-                      <span className="block text-[11px] text-white/40">
-                        {statusLabel(ws.status)} · {ws.platform}
-                      </span>
-                    </Link>
-                  );
-                })
-              )
-            ) : (
-              <p className="px-3 py-2 text-xs text-white/40">Loading…</p>
-            )}
+            <Link
+              href="/settings"
+              className={`rounded-md px-3 py-2 text-sm font-medium transition ${
+                pathname === "/settings"
+                  ? "bg-white/10 text-white"
+                  : "text-white/65 hover:bg-white/5 hover:text-white"
+              }`}
+            >
+              Settings
+            </Link>
           </div>
 
           <div className="border-t border-white/10 p-3">
@@ -101,9 +76,11 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                     <span className="block truncate text-[11px] text-white/40">
                       {hiringManager.email}
                     </span>
-                    <span className="mt-0.5 block text-[10px] font-medium uppercase tracking-[0.12em] text-white/35">
-                      Settings
-                    </span>
+                    {role ? (
+                      <span className="mt-0.5 block text-[10px] font-medium uppercase tracking-[0.12em] text-white/35">
+                        {role.replaceAll("_", " ")}
+                      </span>
+                    ) : null}
                   </span>
                 </Link>
                 <button
@@ -114,33 +91,22 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                   Sign out
                 </button>
               </div>
-            ) : (
-              <Link
-                href="/settings"
-                className={`block rounded-md px-3 py-2 text-sm transition ${
-                  pathname === "/settings"
-                    ? "bg-white/10 text-white"
-                    : "text-white/65 hover:bg-white/5 hover:text-white"
-                }`}
-              >
-                Settings
-              </Link>
-            )}
+            ) : null}
           </div>
         </aside>
 
         <div className="flex min-w-0 flex-1 flex-col">
-          {!inWorkspace ? (
-            <header className="flex h-14 items-center justify-between border-b border-recall-border/80 bg-white/70 px-6 backdrop-blur-md">
-              <p className="text-sm text-recall-muted">
-                Your hiring command center — roles, interviews, and outcomes
-              </p>
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-recall-blue/10 px-2.5 py-1 text-[11px] font-medium text-recall-blue">
-                <span className="h-1.5 w-1.5 rounded-full bg-recall-green" />
-                Shop Talk
-              </span>
-            </header>
-          ) : null}
+          <header className="flex h-14 items-center justify-between border-b border-recall-border/80 bg-white/70 px-6 backdrop-blur-md">
+            <p className="text-sm text-recall-muted">
+              {organization
+                ? `${organization.name} — roles, interviews, and scorecards`
+                : "Roles, interviews, transcripts, and scorecards"}
+            </p>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-recall-blue/10 px-2.5 py-1 text-[11px] font-medium text-recall-blue">
+              <span className="h-1.5 w-1.5 rounded-full bg-recall-green" />
+              Shop Talk
+            </span>
+          </header>
           <main className="flex-1 overflow-auto">{children}</main>
         </div>
       </div>

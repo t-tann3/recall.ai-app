@@ -3,13 +3,10 @@ import { db } from "../store/db.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { handleRouteError } from "./helpers.js";
 import { config } from "../config.js";
+import { assertCanAccessJob, assertCanManageJobs } from "../auth/access.js";
 
 const router = Router();
 
-/**
- * GET /api/scorecard-criteria?jobPostingId=...
- * Returns (or creates) the rubric for this job + logged-in hiring manager.
- */
 router.get("/", requireAuth, (req, res) => {
   try {
     const jobPostingId = req.query.jobPostingId;
@@ -17,12 +14,11 @@ router.get("/", requireAuth, (req, res) => {
       throw Object.assign(new Error("jobPostingId query param is required"), { status: 400 });
     }
 
-    const job = db.getJobPosting(jobPostingId);
-    if (!job) {
-      throw Object.assign(new Error("Job posting not found"), { status: 404 });
-    }
-
-    const criteria = db.getOrCreateCriteriaForJob(req.hiringManager.id, jobPostingId);
+    const job = assertCanAccessJob(req.tenant, jobPostingId);
+    const criteria = db.getOrCreateCriteriaForJob(
+      job.hiringManagerId || req.userId,
+      jobPostingId,
+    );
     return res.json({
       ok: true,
       criteria,
@@ -34,12 +30,9 @@ router.get("/", requireAuth, (req, res) => {
   }
 });
 
-/**
- * PUT /api/scorecard-criteria
- * Body: { jobPostingId, items: [...] }
- */
 router.put("/", requireAuth, (req, res) => {
   try {
+    assertCanManageJobs(req.tenant);
     const jobPostingId = req.body?.jobPostingId;
     const items = req.body?.items;
 
@@ -50,13 +43,10 @@ router.put("/", requireAuth, (req, res) => {
       throw Object.assign(new Error("items must be an array of criteria"), { status: 400 });
     }
 
-    const job = db.getJobPosting(jobPostingId);
-    if (!job) {
-      throw Object.assign(new Error("Job posting not found"), { status: 404 });
-    }
+    const job = assertCanAccessJob(req.tenant, jobPostingId);
 
     const existing = db.listScorecardCriteria({
-      hiringManagerId: req.hiringManager.id,
+      hiringManagerId: job.hiringManagerId,
       jobPostingId,
     })[0];
 
@@ -65,8 +55,9 @@ router.put("/", requireAuth, (req, res) => {
       criteria = db.updateScorecardCriteria(existing.id, { items, jobPostingId });
     } else {
       criteria = db.addScorecardCriteria({
-        hiringManagerId: req.hiringManager.id,
+        hiringManagerId: job.hiringManagerId || req.userId,
         jobPostingId,
+        orgId: req.orgId,
         items,
       });
     }

@@ -4,7 +4,7 @@ import {
   normalizeTranscriptLines,
 } from "../services/recallBots.js";
 
-function pick(obj, paths) {
+export function pick(obj, paths) {
   for (const path of paths) {
     const parts = path.split(".");
     let cur = obj;
@@ -20,7 +20,7 @@ function pick(obj, paths) {
   return null;
 }
 
-function resolveBotId(eventName, data) {
+export function resolveBotId(eventName, data) {
   return (
     pick(data, [
       "bot.id",
@@ -33,7 +33,7 @@ function resolveBotId(eventName, data) {
   );
 }
 
-function resolveRecordingId(data) {
+export function resolveRecordingId(data) {
   return (
     pick(data, [
       "recording.id",
@@ -45,7 +45,7 @@ function resolveRecordingId(data) {
   );
 }
 
-function resolveMediaUrl(data) {
+export function resolveMediaUrl(data) {
   return (
     pick(data, [
       "recording.media_shortcuts.video_mixed.mp4.data.download_url",
@@ -61,7 +61,7 @@ function resolveMediaUrl(data) {
   );
 }
 
-function resolveTranscriptDownloadUrl(data) {
+export function resolveTranscriptDownloadUrl(data) {
   return (
     pick(data, [
       "transcript.data.download_url",
@@ -74,7 +74,7 @@ function resolveTranscriptDownloadUrl(data) {
   );
 }
 
-function mapBotStatus(code) {
+export function mapBotStatus(code) {
   switch (code) {
     case "joining_call":
     case "in_waiting_room":
@@ -183,6 +183,7 @@ export async function processRecallWebhook(msg) {
         lines = normalizeTranscriptLines(payload);
       } catch (err) {
         console.error("[webhooks/recall] transcript download failed:", err.message);
+        throw err;
       }
     }
 

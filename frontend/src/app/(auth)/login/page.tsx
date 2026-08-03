@@ -76,7 +76,10 @@ export default function LoginPage() {
           {submitting ? "Signing in…" : "Sign in"}
         </button>
         <p className="text-xs text-recall-muted">
-          Demo: <span className="font-mono">alex@shoptalk.example</span> /{" "}
+          Demo admin: <span className="font-mono">alex@shoptalk.example</span> /{" "}
+          <span className="font-mono">password123</span>
+          <br />
+          Demo interviewer: <span className="font-mono">sam@shoptalk.example</span> /{" "}
           <span className="font-mono">password123</span>
         </p>
       </form>

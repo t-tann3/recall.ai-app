@@ -71,16 +71,6 @@ export const endpoints = {
     oauthCallback: url("/api/calendar/oauth/callback"),
     status: url("/api/calendar/status"),
   },
-  workspaces: {
-    list: url("/api/workspaces"),
-    byId: (id) => url(`/api/workspaces/${id}`),
-    summary: (id) => url(`/api/workspaces/${id}/summary`),
-    transcript: (id) => url(`/api/workspaces/${id}/transcript`),
-    insights: (id) => url(`/api/workspaces/${id}/insights`),
-    actionItems: (id) => url(`/api/workspaces/${id}/action-items`),
-    questions: (id) => url(`/api/workspaces/${id}/questions`),
-    developer: (id) => url(`/api/workspaces/${id}/developer`),
-  },
   scorecardCriteria: {
     me: url("/api/scorecard-criteria"),
   },
@@ -94,15 +84,6 @@ const RECALL_REGION = process.env.RECALL_REGION?.trim() || null;
 const RECALL_API_KEY = process.env.RECALL_API_KEY?.trim() || null;
 const RECALL_WORKSPACE_VERIFICATION_SECRET =
   process.env.RECALL_WORKSPACE_VERIFICATION_SECRET?.trim() || null;
-
-/**
- * Dashboard endpoint signing secret (Svix).
- * Sample from Recall docs until you paste the real secret from the webhook UI.
- * @see https://docs.recall.ai/docs/testing-webhooks-locally
- */
-const RECALL_SVIX_WEBHOOK_SECRET =
-  process.env.RECALL_SVIX_WEBHOOK_SECRET?.trim() ||
-  "whsec_yhVJ7lfTGMQDJY8YSq9aGcsw4I7/XJIz";
 
 /** Recall API host for the selected region (v1 bots/webhooks). */
 export const RECALL_API_BASE = RECALL_REGION
@@ -151,14 +132,35 @@ const CALENDAR_OAUTH_REDIRECT_URI =
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY?.trim() || null;
 const OPENAI_MODEL = process.env.OPENAI_MODEL?.trim() || "gpt-4o-mini";
 
+const DEFAULT_JWT_SECRET = "shoptalk-dev-secret-change-me";
+const JWT_SECRET = process.env.JWT_SECRET?.trim() || DEFAULT_JWT_SECRET;
+const NODE_ENV = process.env.NODE_ENV?.trim() || "development";
+const IS_PROD = NODE_ENV === "production";
+
+/**
+ * Dashboard endpoint signing secret (Svix).
+ * Fail closed when unset — never ship a hardcoded sample secret.
+ * @see https://docs.recall.ai/docs/testing-webhooks-locally
+ */
+const RECALL_SVIX_WEBHOOK_SECRET =
+  process.env.RECALL_SVIX_WEBHOOK_SECRET?.trim() || null;
+
+if (IS_PROD && JWT_SECRET === DEFAULT_JWT_SECRET) {
+  throw new Error("JWT_SECRET must be set in production");
+}
+if (IS_PROD && !RECALL_SVIX_WEBHOOK_SECRET) {
+  throw new Error("RECALL_SVIX_WEBHOOK_SECRET must be set in production");
+}
+
 export const config = {
   port: PORT,
   corsOrigin: CORS_ORIGIN,
   baseUrl: BASE_URL,
   endpoints,
+  nodeEnv: NODE_ENV,
   auth: {
-    jwtSecret:
-      process.env.JWT_SECRET?.trim() || "shoptalk-dev-secret-change-me",
+    jwtSecret: JWT_SECRET,
+    usingDefaultJwtSecret: JWT_SECRET === DEFAULT_JWT_SECRET,
   },
   recall: {
     region: RECALL_REGION,
@@ -189,6 +191,5 @@ export const config = {
 export function assertRecallConfigured() {
   requireEnv("RECALL_REGION");
   requireEnv("RECALL_API_KEY");
-  requireEnv("RECALL_WORKSPACE_VERIFICATION_SECRET");
   requireEnv("PUBLIC_API_BASE_URL");
 }

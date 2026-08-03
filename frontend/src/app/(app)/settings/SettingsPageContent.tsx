@@ -15,7 +15,7 @@ import {
 } from "@/lib/api/calendar";
 
 export default function SettingsPageContent() {
-  const { hiringManager } = useAuth();
+  const { hiringManager, organization, role } = useAuth();
   const searchParams = useSearchParams();
 
   const [status, setStatus] = useState<CalendarStatus | null>(null);
@@ -161,6 +161,18 @@ export default function SettingsPageContent() {
                 <div className="flex justify-between gap-3">
                   <dt className="text-recall-muted">Email</dt>
                   <dd className="font-medium text-recall-navy">{hiringManager.email}</dd>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <dt className="text-recall-muted">Organization</dt>
+                  <dd className="font-medium text-recall-navy">
+                    {organization?.name || "—"}
+                  </dd>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <dt className="text-recall-muted">Role</dt>
+                  <dd className="font-medium capitalize text-recall-navy">
+                    {role?.replaceAll("_", " ") || "—"}
+                  </dd>
                 </div>
                 <div className="flex justify-between gap-3">
                   <dt className="text-recall-muted">Title</dt>

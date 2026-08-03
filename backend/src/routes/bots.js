@@ -3,14 +3,10 @@ import { db } from "../store/db.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { handleRouteError } from "./helpers.js";
 import { createRecallBot, getRecallBot } from "../services/recallBots.js";
+import { assertCanAccessInterview } from "../auth/access.js";
 
 const router = Router();
 
-/**
- * POST /api/bots
- * Body: { interviewId, meetingUrl?, botName?, joinAt? }
- * Creates a Recall bot for the interview and stores botId on the interview.
- */
 router.post("/", requireAuth, async (req, res) => {
   try {
     const body = req.body || {};
@@ -19,10 +15,7 @@ router.post("/", requireAuth, async (req, res) => {
       throw Object.assign(new Error("interviewId is required"), { status: 400 });
     }
 
-    const interview = db.getInterview(interviewId);
-    if (!interview) {
-      throw Object.assign(new Error("Interview not found"), { status: 404 });
-    }
+    const interview = assertCanAccessInterview(req.tenant, interviewId);
 
     const meetingUrl = (body.meetingUrl || interview.meetingUrl || "").trim();
     if (!meetingUrl) {
@@ -66,7 +59,6 @@ router.post("/", requireAuth, async (req, res) => {
       status: statusFromRecall,
     });
 
-    // If meeting is in the future → scheduled; otherwise joining soon.
     const joinMs = joinAt ? Date.parse(joinAt) : Date.now();
     const nextStatus =
       Number.isFinite(joinMs) && joinMs - Date.now() > 10 * 60 * 1000
@@ -95,12 +87,13 @@ router.post("/", requireAuth, async (req, res) => {
   }
 });
 
-/**
- * GET /api/bots/:id
- */
 router.get("/:id", requireAuth, async (req, res) => {
   try {
     const local = db.getBot(req.params.id);
+    if (local?.interviewId) {
+      assertCanAccessInterview(req.tenant, local.interviewId);
+    }
+
     let recall = null;
     try {
       recall = await getRecallBot(req.params.id);
@@ -111,7 +104,7 @@ router.get("/:id", requireAuth, async (req, res) => {
         db.updateBot(local.id, { status: code });
       }
     } catch {
-      // Local mirror still useful if Recall fetch fails.
+      // ignore recall fetch errors
     }
 
     if (!local && !recall) {
@@ -122,7 +115,9 @@ router.get("/:id", requireAuth, async (req, res) => {
       ok: true,
       bot: local ? db.getBot(req.params.id) : null,
       recall,
-      interview: local ? db.getInterview(local.interviewId) : db.findInterviewByBotId(req.params.id),
+      interview: local
+        ? db.getInterview(local.interviewId)
+        : db.findInterviewByBotId(req.params.id),
     });
   } catch (err) {
     return handleRouteError(res, err);

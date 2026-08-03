@@ -10,6 +10,7 @@ frontend/*.tsbuildinfo
 # Backend
 backend/node_modules/
 backend/.env
+backend/data/
 
 # Env / OS
 .env

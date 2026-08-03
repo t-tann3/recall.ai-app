@@ -6,6 +6,8 @@ import { createInterview } from "../models/interview.js";
 import { createInterviewPanelist } from "../models/interviewPanelist.js";
 import { createCalendarEvent } from "../models/calendarEvent.js";
 import { createCalendarConnection } from "../models/calendarConnection.js";
+import { createOrganization } from "../models/organization.js";
+import { createMembership } from "../models/membership.js";
 import { createRecordingModel } from "../models/recording.js";
 import { createTranscriptModel } from "../models/transcript.js";
 import { createBotModel } from "../models/bot.js";
@@ -17,10 +19,12 @@ import {
 import { createScorecardResult } from "../models/scorecardResult.js";
 import { nowIso } from "../models/ids.js";
 import bcrypt from "bcryptjs";
+import { SqlitePersistence } from "./persist.js";
+import { setPersistence } from "./persistenceAccess.js";
 
 /**
  * In-memory store with referential checks between core HR models.
- * Swap for SQLite/Postgres later without changing route shapes.
+ * Snapshotted to SQLite so restarts keep hiring + Recall capture state.
  */
 class Store {
   constructor() {
@@ -50,6 +54,264 @@ class Store {
     this.scorecardCriteria = new Map();
     /** @type {Map<string, import("../models/scorecardResult.js").ScorecardResult>} */
     this.scorecardResults = new Map();
+    /** @type {Map<string, import("../models/organization.js").Organization>} */
+    this.organizations = new Map();
+    /** @type {Map<string, import("../models/membership.js").Membership>} */
+    this.memberships = new Map();
+
+    /** @type {import("./persist.js").SqlitePersistence | null} */
+    this._persistence = null;
+    this._persistPaused = false;
+  }
+
+  attachPersistence(persistence) {
+    this._persistence = persistence;
+  }
+
+  pausePersist() {
+    this._persistPaused = true;
+  }
+
+  resumePersist() {
+    this._persistPaused = false;
+  }
+
+  persist() {
+    if (this._persistPaused || !this._persistence) return;
+    try {
+      this._persistence.saveFrom(this);
+    } catch (err) {
+      console.error("[store] persist failed:", err.message);
+    }
+  }
+
+  jobIdsForOrg(orgId) {
+    return new Set(
+      [...this.jobPostings.values()].filter((job) => job.orgId === orgId).map((j) => j.id),
+    );
+  }
+
+  jobIdsForHiringManager(hiringManagerId) {
+    return new Set(
+      [...this.jobPostings.values()]
+        .filter((job) => job.hiringManagerId === hiringManagerId)
+        .map((job) => job.id),
+    );
+  }
+
+  listJobPostingsForOrg(orgId) {
+    return [...this.jobPostings.values()].filter((job) => job.orgId === orgId);
+  }
+
+  listJobPostingsForHiringManager(hiringManagerId) {
+    return [...this.jobPostings.values()].filter(
+      (job) => job.hiringManagerId === hiringManagerId,
+    );
+  }
+
+  isPanelist(interviewId, userId) {
+    return this.listPanelistsForInterview(interviewId).some((p) => p.hiringManagerId === userId);
+  }
+
+  /**
+   * Jobs visible to a tenant member (org-wide roles see all; HM sees owned; interviewer sees assigned).
+   */
+  listJobsVisibleTo({ orgId, userId, role }) {
+    const jobs = this.listJobPostingsForOrg(orgId);
+    if (role === "admin" || role === "recruiter") return jobs;
+    if (role === "hiring_manager") {
+      return jobs.filter((job) => job.hiringManagerId === userId);
+    }
+    // interviewer
+    return jobs.filter((job) =>
+      this.listInterviews({ jobPostingId: job.id }).some((i) => this.isPanelist(i.id, userId)),
+    );
+  }
+
+  listCandidatesVisibleTo(ctx) {
+    const visibleJobIds = new Set(this.listJobsVisibleTo(ctx).map((j) => j.id));
+    return [...this.candidates.values()].filter((c) => {
+      if (c.orgId !== ctx.orgId) return false;
+      if (ctx.role === "admin" || ctx.role === "recruiter") return true;
+      return (
+        this.listApplications({ candidateId: c.id }).some((a) => visibleJobIds.has(a.jobPostingId)) ||
+        this.listInterviews({ candidateId: c.id }).some(
+          (i) => visibleJobIds.has(i.jobPostingId) || this.isPanelist(i.id, ctx.userId),
+        )
+      );
+    });
+  }
+
+  listInterviewsVisibleTo(ctx, filters = {}) {
+    return this.listInterviews(filters).filter((interview) => {
+      if (interview.orgId !== ctx.orgId) return false;
+      if (ctx.role === "admin" || ctx.role === "recruiter") return true;
+      const job = this.getJobPosting(interview.jobPostingId);
+      if (job?.hiringManagerId === ctx.userId) return true;
+      return this.isPanelist(interview.id, ctx.userId);
+    });
+  }
+
+  listApplicationsVisibleTo(ctx, filters = {}) {
+    const visibleJobIds = new Set(this.listJobsVisibleTo(ctx).map((j) => j.id));
+    return this.listApplications(filters).filter(
+      (app) => app.orgId === ctx.orgId && visibleJobIds.has(app.jobPostingId),
+    );
+  }
+
+  // legacy aliases used by older routes — prefer VisibleTo helpers
+  listCandidatesForHiringManager(hiringManagerId) {
+    const membership = this.getPrimaryMembership(hiringManagerId);
+    if (!membership) return [];
+    return this.listCandidatesVisibleTo({
+      orgId: membership.organizationId,
+      userId: hiringManagerId,
+      role: membership.role,
+    });
+  }
+
+  listInterviewsForHiringManager(hiringManagerId, filters = {}) {
+    const membership = this.getPrimaryMembership(hiringManagerId);
+    if (!membership) return [];
+    return this.listInterviewsVisibleTo(
+      {
+        orgId: membership.organizationId,
+        userId: hiringManagerId,
+        role: membership.role,
+      },
+      filters,
+    );
+  }
+
+  listApplicationsForHiringManager(hiringManagerId, filters = {}) {
+    const membership = this.getPrimaryMembership(hiringManagerId);
+    if (!membership) return [];
+    return this.listApplicationsVisibleTo(
+      {
+        orgId: membership.organizationId,
+        userId: hiringManagerId,
+        role: membership.role,
+      },
+      filters,
+    );
+  }
+
+  assertJobOwnedBy(jobPostingId, hiringManagerId) {
+    const job = this.getJobPosting(jobPostingId);
+    const membership = this.getPrimaryMembership(hiringManagerId);
+    if (
+      !job ||
+      !membership ||
+      job.orgId !== membership.organizationId ||
+      (membership.role !== "admin" &&
+        membership.role !== "recruiter" &&
+        job.hiringManagerId !== hiringManagerId)
+    ) {
+      throw Object.assign(new Error("Job posting not found"), { status: 404 });
+    }
+    return job;
+  }
+
+  canAccessCandidate(candidateId, hiringManagerId) {
+    const membership = this.getPrimaryMembership(hiringManagerId);
+    if (!membership) return false;
+    const candidate = this.getCandidate(candidateId);
+    if (!candidate || candidate.orgId !== membership.organizationId) return false;
+    return this.listCandidatesVisibleTo({
+      orgId: membership.organizationId,
+      userId: hiringManagerId,
+      role: membership.role,
+    }).some((c) => c.id === candidateId);
+  }
+
+  canAccessInterview(interviewId, hiringManagerId) {
+    const membership = this.getPrimaryMembership(hiringManagerId);
+    if (!membership) return false;
+    const interview = this.getInterview(interviewId);
+    if (!interview || interview.orgId !== membership.organizationId) return false;
+    return this.listInterviewsVisibleTo({
+      orgId: membership.organizationId,
+      userId: hiringManagerId,
+      role: membership.role,
+    }).some((i) => i.id === interviewId);
+  }
+
+  // --- Organizations / memberships ---
+
+  listOrganizations() {
+    return [...this.organizations.values()];
+  }
+
+  getOrganization(id) {
+    return this.organizations.get(id) || null;
+  }
+
+  addOrganization(input) {
+    const row = createOrganization(input);
+    if (!row.name) {
+      throw Object.assign(new Error("organization name is required"), { status: 400 });
+    }
+    this.organizations.set(row.id, row);
+    return row;
+  }
+
+  listMemberships(filters = {}) {
+    let rows = [...this.memberships.values()];
+    if (filters.organizationId) {
+      rows = rows.filter((r) => r.organizationId === filters.organizationId);
+    }
+    if (filters.userId) {
+      rows = rows.filter((r) => r.userId === filters.userId);
+    }
+    return rows;
+  }
+
+  getMembership(id) {
+    return this.memberships.get(id) || null;
+  }
+
+  getPrimaryMembership(userId) {
+    return this.listMemberships({ userId })[0] || null;
+  }
+
+  findMembership(organizationId, userId) {
+    return (
+      this.listMemberships({ organizationId, userId })[0] || null
+    );
+  }
+
+  addMembership(input) {
+    if (!input.organizationId || !this.organizations.has(input.organizationId)) {
+      throw Object.assign(new Error("organizationId must reference an existing organization"), {
+        status: 400,
+      });
+    }
+    if (!input.userId || !this.hiringManagers.has(input.userId)) {
+      throw Object.assign(new Error("userId must reference an existing user"), { status: 400 });
+    }
+    if (this.findMembership(input.organizationId, input.userId)) {
+      throw Object.assign(new Error("user is already a member of this organization"), {
+        status: 409,
+      });
+    }
+    const row = createMembership(input);
+    this.memberships.set(row.id, row);
+    return row;
+  }
+
+  /**
+   * Create org + admin membership for a new user (signup).
+   */
+  provisionTenantForUser(user, { organizationName } = {}) {
+    const org = this.addOrganization({
+      name: organizationName || `${user.name}'s Organization`,
+    });
+    const membership = this.addMembership({
+      organizationId: org.id,
+      userId: user.id,
+      role: "admin",
+    });
+    return { organization: org, membership };
   }
 
   // --- Hiring managers ---
@@ -95,6 +357,11 @@ class Store {
   }
 
   addCandidate(input) {
+    if (!input.orgId || !this.organizations.has(input.orgId)) {
+      throw Object.assign(new Error("orgId must reference an existing organization"), {
+        status: 400,
+      });
+    }
     const row = createCandidate(input);
     if (!row.name || !row.email) {
       throw Object.assign(new Error("name and email are required"), { status: 400 });
@@ -116,6 +383,11 @@ class Store {
   addJobPosting(input) {
     if (!input.hiringManagerId || !this.hiringManagers.has(input.hiringManagerId)) {
       throw Object.assign(new Error("hiringManagerId must reference an existing hiring manager"), {
+        status: 400,
+      });
+    }
+    if (!input.orgId || !this.organizations.has(input.orgId)) {
+      throw Object.assign(new Error("orgId must reference an existing organization"), {
         status: 400,
       });
     }
@@ -155,6 +427,13 @@ class Store {
         status: 400,
       });
     }
+    const job = this.getJobPosting(input.jobPostingId);
+    const orgId = input.orgId || job.orgId;
+    if (!orgId || !this.organizations.has(orgId)) {
+      throw Object.assign(new Error("orgId must reference an existing organization"), {
+        status: 400,
+      });
+    }
     const duplicate = [...this.applications.values()].find(
       (a) =>
         a.candidateId === input.candidateId && a.jobPostingId === input.jobPostingId,
@@ -164,7 +443,7 @@ class Store {
         status: 409,
       });
     }
-    const row = createApplication(input);
+    const row = createApplication({ ...input, orgId });
     this.applications.set(row.id, row);
     return row;
   }
@@ -230,6 +509,13 @@ class Store {
         status: 400,
       });
     }
+    const job = this.getJobPosting(input.jobPostingId);
+    const orgId = input.orgId || job.orgId;
+    if (!orgId || !this.organizations.has(orgId)) {
+      throw Object.assign(new Error("orgId must reference an existing organization"), {
+        status: 400,
+      });
+    }
     if (input.applicationId) {
       const app = this.applications.get(input.applicationId);
       if (!app) {
@@ -247,7 +533,7 @@ class Store {
         );
       }
     }
-    const row = createInterview(input);
+    const row = createInterview({ ...input, orgId });
     this.interviews.set(row.id, row);
     return row;
   }
@@ -359,6 +645,11 @@ class Store {
         new Error("hiringManagerId must reference an existing hiring manager"),
         { status: 400 },
       );
+    }
+    if (!input.orgId || !this.organizations.has(input.orgId)) {
+      throw Object.assign(new Error("orgId must reference an existing organization"), {
+        status: 400,
+      });
     }
     if (!["google_calendar", "microsoft_outlook"].includes(input.platform)) {
       throw Object.assign(new Error("platform must be google_calendar or microsoft_outlook"), {
@@ -548,12 +839,14 @@ class Store {
       });
     }
 
+    const job = this.getJobPosting(jobPostingId);
     const existing = this.listScorecardCriteria({ hiringManagerId, jobPostingId })[0];
     if (existing) return existing;
 
     return this.addScorecardCriteria({
       hiringManagerId,
       jobPostingId,
+      orgId: job.orgId,
       items: defaultCriteriaItems(),
     });
   }
@@ -569,7 +862,14 @@ class Store {
         status: 400,
       });
     }
-    const row = createScorecardCriteria(input);
+    const job = this.getJobPosting(input.jobPostingId);
+    const orgId = input.orgId || job.orgId;
+    if (!orgId || !this.organizations.has(orgId)) {
+      throw Object.assign(new Error("orgId must reference an existing organization"), {
+        status: 400,
+      });
+    }
+    const row = createScorecardCriteria({ ...input, orgId });
     if (row.items.length === 0) {
       throw Object.assign(new Error("At least one criterion with a label is required"), {
         status: 400,
@@ -645,7 +945,138 @@ class Store {
   }
 }
 
+const MUTATING_METHODS = [
+  "addHiringManager",
+  "addOrganization",
+  "addMembership",
+  "addCandidate",
+  "addJobPosting",
+  "addApplication",
+  "addInterview",
+  "updateInterview",
+  "addInterviewPanelist",
+  "addCalendarEvent",
+  "addCalendarConnection",
+  "updateCalendarConnection",
+  "addBot",
+  "updateBot",
+  "updateRecording",
+  "updateTranscript",
+  "upsertRecordingForInterview",
+  "upsertTranscriptForInterview",
+  "addRecording",
+  "addTranscript",
+  "addScorecardCriteria",
+  "updateScorecardCriteria",
+  "upsertScorecardResult",
+];
+
+for (const name of MUTATING_METHODS) {
+  const original = Store.prototype[name];
+  Store.prototype[name] = function patched(...args) {
+    const result = original.apply(this, args);
+    this.persist();
+    return result;
+  };
+}
+
 export const db = new Store();
+
+/** @typedef {Store} Store */
+
+/**
+ * Load SQLite snapshot (if any), migrate tenancy fields, then seed if empty.
+ */
+export function bootstrapStore() {
+  const persistence = new SqlitePersistence();
+  db.attachPersistence(persistence);
+  setPersistence(persistence);
+  persistence.loadInto(db);
+
+  db.pausePersist();
+  try {
+    ensureTenancy();
+    if (db.hiringManagers.size === 0) {
+      seedDemoData();
+    }
+  } finally {
+    db.resumePersist();
+    db.persist();
+  }
+
+  console.log(
+    `[store] ${db.organizations.size} org(s), ${db.hiringManagers.size} user(s) → ${persistence.dbPath}`,
+  );
+
+  return persistence;
+}
+
+/**
+ * Backfill org/membership/orgId for data loaded from older snapshots.
+ */
+export function ensureTenancy() {
+  for (const hm of db.hiringManagers.values()) {
+    if (!db.getPrimaryMembership(hm.id)) {
+      db.provisionTenantForUser(hm, {
+        organizationName: hm.team ? `${hm.team} · ${hm.name}` : `${hm.name}'s Organization`,
+      });
+    }
+  }
+
+  for (const job of db.jobPostings.values()) {
+    if (job.orgId && db.organizations.has(job.orgId)) continue;
+    const membership = db.getPrimaryMembership(job.hiringManagerId);
+    if (!membership) continue;
+    db.jobPostings.set(job.id, { ...job, orgId: membership.organizationId });
+  }
+
+  for (const candidate of db.candidates.values()) {
+    if (candidate.orgId && db.organizations.has(candidate.orgId)) continue;
+    const viaApp = db.listApplications({ candidateId: candidate.id })[0];
+    const viaInt = db.listInterviews({ candidateId: candidate.id })[0];
+    const jobId = viaApp?.jobPostingId || viaInt?.jobPostingId;
+    const job = jobId ? db.getJobPosting(jobId) : null;
+    const membership = job
+      ? db.getPrimaryMembership(job.hiringManagerId)
+      : db.listMemberships()[0];
+    if (!membership) continue;
+    db.candidates.set(candidate.id, {
+      ...candidate,
+      orgId: job?.orgId || membership.organizationId,
+    });
+  }
+
+  for (const app of db.applications.values()) {
+    if (app.orgId && db.organizations.has(app.orgId)) continue;
+    const job = db.getJobPosting(app.jobPostingId);
+    if (!job?.orgId) continue;
+    db.applications.set(app.id, { ...app, orgId: job.orgId });
+  }
+
+  for (const interview of db.interviews.values()) {
+    if (interview.orgId && db.organizations.has(interview.orgId)) continue;
+    const job = db.getJobPosting(interview.jobPostingId);
+    if (!job?.orgId) continue;
+    db.interviews.set(interview.id, { ...interview, orgId: job.orgId });
+  }
+
+  for (const criteria of db.scorecardCriteria.values()) {
+    if (criteria.orgId && db.organizations.has(criteria.orgId)) continue;
+    const job = db.getJobPosting(criteria.jobPostingId);
+    if (!job?.orgId) continue;
+    db.scorecardCriteria.set(criteria.id, { ...criteria, orgId: job.orgId });
+  }
+
+  for (const conn of db.calendarConnections.values()) {
+    if (conn.orgId && db.organizations.has(conn.orgId)) continue;
+    const membership = db.getPrimaryMembership(conn.hiringManagerId);
+    if (!membership) continue;
+    db.calendarConnections.set(conn.id, {
+      ...conn,
+      orgId: membership.organizationId,
+    });
+  }
+}
 
 /** Seed a small Shop Talk / hiring demo graph. */
 export function seedDemoData() {
@@ -659,11 +1090,30 @@ export function seedDemoData() {
     title: "Engineering Manager",
   });
 
+  const { organization: org } = db.provisionTenantForUser(hm, {
+    organizationName: "Shop Talk",
+  });
+
+  // Second member: interviewer with narrower access
+  const interviewer = db.addHiringManager({
+    name: "Sam Chen",
+    email: "sam@shoptalk.example",
+    passwordHash: bcrypt.hashSync("password123", 10),
+    team: "Engineering",
+    title: "Senior Engineer",
+  });
+  db.addMembership({
+    organizationId: org.id,
+    userId: interviewer.id,
+    role: "interviewer",
+  });
+
   const candidate = db.addCandidate({
     name: "Jordan Lee",
     email: "jordan.lee@email.com",
     source: "referral",
     stage: "interviewing",
+    orgId: org.id,
   });
 
   const csCandidate = db.addCandidate({
@@ -671,6 +1121,7 @@ export function seedDemoData() {
     email: "maya.ortiz@email.com",
     source: "indeed",
     stage: "interviewing",
+    orgId: org.id,
   });
 
   const job = db.addJobPosting({
@@ -681,6 +1132,7 @@ export function seedDemoData() {
     description: "Build product UI for Shop Talk’s interview insights platform.",
     status: "open",
     hiringManagerId: hm.id,
+    orgId: org.id,
   });
 
   const csJob = db.addJobPosting({
@@ -691,11 +1143,13 @@ export function seedDemoData() {
     description: "Help service dining halls across the country.",
     status: "open",
     hiringManagerId: hm.id,
+    orgId: org.id,
   });
 
   db.addScorecardCriteria({
     hiringManagerId: hm.id,
     jobPostingId: job.id,
+    orgId: org.id,
     items: [
       { label: "Technical depth", description: "Strong frontend fundamentals and system thinking.", weight: 2 },
       { label: "Product judgment", description: "Balances UX, performance, and delivery tradeoffs.", weight: 1 },
@@ -707,6 +1161,7 @@ export function seedDemoData() {
   db.addScorecardCriteria({
     hiringManagerId: hm.id,
     jobPostingId: csJob.id,
+    orgId: org.id,
     items: [
       { label: "Customer empathy", description: "Shows care for guests and handles conflict calmly.", weight: 2 },
       { label: "Communication", description: "Clear, professional, and easy to understand.", weight: 1 },
@@ -719,12 +1174,14 @@ export function seedDemoData() {
     candidateId: candidate.id,
     jobPostingId: job.id,
     stage: "onsite",
+    orgId: org.id,
   });
 
   const csApplication = db.addApplication({
     candidateId: csCandidate.id,
     jobPostingId: csJob.id,
     stage: "phone_screen",
+    orgId: org.id,
   });
 
   const starts = new Date();
@@ -740,6 +1197,7 @@ export function seedDemoData() {
     status: "scheduled",
     scheduledAt: starts.toISOString(),
     meetingUrl: "https://meet.google.com/abc-defg-hij",
+    orgId: org.id,
   });
 
   const csStarts = new Date();
@@ -753,6 +1211,7 @@ export function seedDemoData() {
     scheduledAt: csStarts.toISOString(),
     meetingUrl: "https://meet.google.com/maya-demo",
     botId: "bot_demo_maya_phone",
+    orgId: org.id,
   });
 
   const recording = db.addRecording({
@@ -760,7 +1219,6 @@ export function seedDemoData() {
     botId: "bot_demo_maya_phone",
     status: "done",
     durationSeconds: 742,
-    // Public sample clip for local demo playback
     mediaUrl: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   });
 
@@ -808,7 +1266,6 @@ export function seedDemoData() {
     ],
   });
 
-  // Second interview so evaluation UI can show per-interview scorecards.
   const csOnsite = new Date();
   csOnsite.setHours(csOnsite.getHours() + 96);
   db.addInterview({
@@ -819,11 +1276,17 @@ export function seedDemoData() {
     status: "scheduled",
     scheduledAt: csOnsite.toISOString(),
     meetingUrl: "https://meet.google.com/maya-onsite",
+    orgId: org.id,
   });
 
   db.addInterviewPanelist({
     interviewId: interview.id,
     hiringManagerId: hm.id,
+    role: "interviewer",
+  });
+  db.addInterviewPanelist({
+    interviewId: interview.id,
+    hiringManagerId: interviewer.id,
     role: "interviewer",
   });
 

@@ -13,6 +13,7 @@ import { createId, nowIso } from "./ids.js";
  * @property {string | null} platformEmail
  * @property {string | null} recallCalendarId
  * @property {string | null} oauthRefreshToken  — never expose in API responses
+ * @property {string} orgId
  * @property {CalendarConnectionStatus} status
  * @property {string | null} lastError
  * @property {string} createdAt
@@ -29,6 +30,7 @@ export function createCalendarConnection(input = {}) {
     platformEmail: input.platformEmail ?? null,
     recallCalendarId: input.recallCalendarId ?? null,
     oauthRefreshToken: input.oauthRefreshToken ?? null,
+    orgId: input.orgId || "",
     status: input.status || "connected",
     lastError: input.lastError ?? null,
     createdAt: input.createdAt || now,
